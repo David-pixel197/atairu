@@ -1,1 +1,38 @@
-# Orquestração dos containers
+version: '3.8'
+
+services:
+  db:
+    # Utilizando PostGIS conforme especificado na arquitetura do projeto
+    image: postgis/postgis:15-3.3-alpine
+    container_name: atairu_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Mapeando o arquivo SQL exato da sua máquina para o local exato que o Postgres exige
+      - ./db/init/01_init.sql:/docker-entrypoint-initdb.d/01_init.sql
+
+  backend:
+    build:
+      context: ./atairu-backend
+      dockerfile: Dockerfile
+    container_name: atairu_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Variáveis de ambiente que o Spring Boot usará para conectar ao banco
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/atairu_db
+      - SPRING_DATASOURCE_USERNAME=atairu_user
+      - SPRING_DATASOURCE_PASSWORD=atairu_password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
