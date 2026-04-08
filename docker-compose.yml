@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     # Utilizando PostGIS conforme especificado na arquitetura do projeto
