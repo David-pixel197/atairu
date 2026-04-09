@@ -10,12 +10,34 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from '@/context/AuthContext';
 
 export default function login() {
     const router = useRouter();
     const [vendoSenha, changeVerSenha] = useState(false);
+    const [textNotify, changeNotify] = useState('Aviso: Teste!');
+    const [podeVerNotify, changepodeVerNotify] = useState(false);
+    const [email, setEmail] = useState('');
+    const [senha, setSenha] = useState('');
+    const { updateTempUserData } = useAuth();
+    const saveDados = () => {
+        if(email.includes('@')){
+            updateTempUserData({ email, senha });
+            router.push('/home')
+        }else{
+            showNotify('Aviso: O email digitado é invalido!');
+        }
+    }
     const verSenha = () => {
         changeVerSenha(!vendoSenha);
+    }
+    const showNotify = (texto: any) => {
+        changeNotify(texto);
+        if(podeVerNotify === true) return;
+        changepodeVerNotify(true);
+        setTimeout(() => {
+            changepodeVerNotify(false);
+        }, 3000)
     }
     return(
         <View style={styles.container}>
@@ -26,7 +48,7 @@ export default function login() {
                         <Image 
                             source={require('../assets/images/atairu.png')} 
                             style={styles.logo}
-                            resizeMode="contain" // Garante que a imagem não seja cortada
+                            resizeMode="contain"
                         />
                     </View>
                     <View style={styles.painel}>
@@ -35,12 +57,16 @@ export default function login() {
                         }}>Login</Text>
                         <View style={[styles.inputs, styles.sombra]}>
                             <Text style={{marginBottom: 4, fontWeight: '700'}}>Email</Text>
-                            <TextInput style={{padding: 4}} keyboardType="email-address"/>
+                            <TextInput style={{padding: 4}} keyboardType="email-address"
+                            value={email} onChangeText={(valor) => setEmail(valor)}
+                            autoCapitalize='none'/>
                         </View>
                         <View style={[styles.inputs, styles.sombra]}>
                             <Text style={{fontWeight: '700'}}>Senha</Text>
                             <View style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between'}}>
-                                <TextInput style={{flex: 1, padding: 4}} secureTextEntry={!vendoSenha}/>
+                                <TextInput style={{flex: 1, padding: 4}} secureTextEntry={!vendoSenha}
+                                value={senha} onChangeText={(valor) => setSenha(valor)}
+                                autoCapitalize='none'/>
                                 <TouchableOpacity style={{top: '-20%'}} onPress={verSenha}>
                                     <Ionicons name={vendoSenha ? "eye-outline" : "eye-off-outline"} size={20} color="#000" />
                                 </TouchableOpacity>
@@ -71,7 +97,7 @@ export default function login() {
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity style={styles.btn_entrar}>
+                        <TouchableOpacity style={styles.btn_entrar} onPress={saveDados}>
                             <Text style={{color: '#fff', fontWeight: 'bold', fontSize: 16}}>Entrar</Text>
                         </TouchableOpacity>
                         <View style={styles.registrar}>
@@ -81,6 +107,11 @@ export default function login() {
                             </TouchableOpacity>
                         </View>
                     </View>
+                    {podeVerNotify && (
+                        <View style={styles.warningOverlay}>
+                            <Text style={{fontWeight: 'bold', color: '#D24141'}}>{textNotify}</Text>
+                        </View>
+                    )}
                 </SafeAreaView>
             </ImageBackground>
         </View>
@@ -170,5 +201,19 @@ const styles = StyleSheet.create({
         alignItems: 'center', 
         marginVertical: 15,
         bottom: -50
+    },
+    warningOverlay:{
+        position:'absolute',
+        top: 50,
+        backgroundColor: '#FDEAEA',
+        borderColor: '#D24141',
+        borderWidth: 2,
+        borderStyle: 'solid',
+        padding: 8,
+        width: '80%',
+        borderRadius: 5,
+        alignItems: 'center',
+        right: 35,
+        left: 35,
     }
 });
