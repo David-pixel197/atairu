@@ -25,9 +25,9 @@ services:
       - "8080:8080"
     environment:
       # Variáveis de ambiente que o Spring Boot usará para conectar ao banco
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/atairu_db
-      - SPRING_DATASOURCE_USERNAME=atairu_user
-      - SPRING_DATASOURCE_PASSWORD=atairu_password
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
     depends_on:
       - db
