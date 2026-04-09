@@ -14,18 +14,16 @@ Este é o repositório principal do projeto **Ataîru**, que contém a infraestr
 
 ## 📋 Pré-requisitos
 
-Para rodar este projeto na sua máquina, você não precisa instalar o Java ou o PostgreSQL nativamente, pois tudo roda isolado em containers. Você precisa ter instalado apenas:
+Para rodar este projeto na sua máquina, você precisará instalar:
 
-1.  **[Docker](https://docs.docker.com/get-docker/)**
-2.  **[Docker Compose](https://docs.docker.com/compose/install/)** (Geralmente já vem incluso no Docker Desktop)
-3.  **[Git](https://git-scm.com/)** (Para clonar o repositório)
+1. **[Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/install/)** (Para rodar o Banco de Dados e o Backend isolados)
+2. **[Node.js](https://nodejs.org/)** (Para gerenciar as dependências do Frontend)
+3. **[Git](https://git-scm.com/)** (Para clonar o repositório)
 
----
-
-## Sugestoes de Tecnologias
-
-1.  **[Docker Desktop](https://docs.docker.com/desktop/)** (Ferramenta mais completa e visual para gerenciamento de conteiners)
-2.  **[Dbeaver](https://dbeaver.io/)** (Ferramenta visual para gerenciar o banco de dados)
+*Sugestões adicionais:*
+* **[Docker Desktop](https://docs.docker.com/desktop/)**: Ferramenta visual para gerenciamento de contêineres.
+* **[DBeaver](https://dbeaver.io/)**: Ferramenta visual para gerenciar o banco de dados.
+* **[Expo Go](https://expo.dev/go)**: Aplicativo no seu smartphone (Android/iOS) para testar o frontend em tempo real.
 
 ---
 
@@ -65,6 +63,38 @@ Após o Docker finalizar a inicialização, os serviços estarão disponíveis e
 
     Backend (Spring Boot): http://localhost:8080
     Banco de Dados (PostgreSQL): localhost:5432
+
+---
+
+## Rodando o App (Frontend)
+
+Com o backend já rodando, abra uma nova aba ou janela do seu terminal e siga os passos abaixo para iniciar o aplicativo:
+
+1. Acesse a pasta do frontend e instale as dependências:
+```bash
+cd atairu-frontend
+npm install
+```
+
+2. Inicie o servidor do Expo:
+```bash
+npx expo start
+```
+
+(Ou npm start)
+
+3. Acesse o aplicativo:
+No terminal, o Expo exibirá um QR Code. Você pode:
+
+    Ler o QR Code com o aplicativo Expo Go no seu celular para testar no dispositivo físico.
+
+    Pressionar a no terminal para abrir no Emulador Android.
+
+    Pressionar i no terminal para abrir no Simulador iOS.
+
+    Pressionar w no terminal para abrir no Navegador Web.
+
+---
 
 🛑 Como Parar a Aplicação
 
