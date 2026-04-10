@@ -16,17 +16,16 @@ export default function login() {
     const router = useRouter();
     const [vendoSenha, changeVerSenha] = useState(false);
     const [textNotify, changeNotify] = useState('Aviso: Teste!');
-    const [podeVerNotify, changepodeVerNotify] = useState(false);
+    const [podeVerNotify, changePodeVerNotify] = useState(false);
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
     const { updateTempUserData } = useAuth();
     const saveDados = () => {
-        if(email.includes('@')){
-            updateTempUserData({ email, senha });
-            router.push('/home')
-        }else{
-            showNotify('Aviso: O email digitado é invalido!');
-        }
+        if(email.length < 1) return showNotify('Aviso: Digite um email!');
+        if(senha.length < 1) return showNotify('Aviso: Digite uma senha!');
+        if(!email.includes('@')) return showNotify('Aviso: O email digitado é invalido!');
+        updateTempUserData({ email, senha });
+        router.push('/home')
     }
     const verSenha = () => {
         changeVerSenha(!vendoSenha);
@@ -34,9 +33,9 @@ export default function login() {
     const showNotify = (texto: any) => {
         changeNotify(texto);
         if(podeVerNotify === true) return;
-        changepodeVerNotify(true);
+        changePodeVerNotify(true);
         setTimeout(() => {
-            changepodeVerNotify(false);
+            changePodeVerNotify(false);
         }, 3000)
     }
     return(

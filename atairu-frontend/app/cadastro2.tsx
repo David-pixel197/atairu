@@ -10,12 +10,18 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from '@/context/AuthContext';
 
 export default function cadastro() {
     const router = useRouter();
     const [data, setData] = useState(new Date());
     const [vendoCalendario, showCalendario] = useState(false);
-
+    const [textNotify, changeNotify] = useState('Aviso: Teste!');
+    const [podeVerNotify, changePodeVerNotify] = useState(false);
+    const [nickname, setNickname] = useState('');
+    const [nome, setNome] = useState('');
+    const [CPF, setCPF] = useState('');
+    const {updateTempUserData} = useAuth();
     const onChange = (event: any, selectedDate?: Date) => {
         showCalendario(false);
         if (selectedDate) {
@@ -27,6 +33,32 @@ export default function cadastro() {
         let mes = (date.getMonth() + 1).toString().padStart(2, '0');
         let ano = date.getFullYear();
         return `${dia}/${mes}/${ano}`;
+    };
+    const showNotify = (texto: any) => {
+        changeNotify(texto);
+        if(podeVerNotify === true) return;
+        changePodeVerNotify(true);
+        setTimeout(() => {
+            changePodeVerNotify(false);
+        }, 3000)
+    }
+    const finalizarCadastro = () => {
+        const nomeTratado = nome.trim();
+        if(!data) return showNotify('Aviso: Selecione sua data de nascimento!');
+        if(nomeTratado.length < 1) return showNotify('Aviso: Digite seu nome!');
+        if(nickname.length < 1) return showNotify('Aviso: Digite um nickname!');
+        if(CPF.length < 1) return showNotify('Aviso: Digite seu CPF!');
+        if(!nomeTratado.includes(' ')) return showNotify('Aviso: Digite seu nome completo!');
+        updateTempUserData({dataNasc: data, nomeCompleto: nomeTratado, nickname: nickname, cpf: CPF})
+        router.push('/historias')
+    }
+    const mascaraCPF = (valor: string) => {
+        const apenasNumeros = valor.replace(/\D/g, '');
+        return apenasNumeros
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2') 
+            .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+            .substring(0, 14);
     };
     return(
         <View style={styles.container}>
@@ -46,15 +78,18 @@ export default function cadastro() {
                         }}>Criar Conta</Text>
                         <View style={[styles.inputs, styles.sombra]}>
                             <Text style={{marginBottom: 4, fontWeight: '700'}}>Nickname</Text>
-                            <TextInput style={{padding: 4}} keyboardType="email-address"/>
+                            <TextInput style={{padding: 4}} keyboardType="email-address"
+                            value={nickname} onChangeText={(valor) => setNickname(valor.replace(/\s/g, ''))}/>
                         </View>
                         <View style={[styles.inputs, styles.sombra]}>
                             <Text style={{marginBottom: 4, fontWeight: '700'}}>Nome Completo</Text>
-                            <TextInput style={{padding: 4}} keyboardType="email-address"/>
+                            <TextInput style={{padding: 4}} keyboardType="email-address"
+                            value={nome} onChangeText={(valor) => setNome(valor)}/>
                         </View>
                         <View style={[styles.inputs, styles.sombra]}>
                             <Text style={{marginBottom: 4, fontWeight: '700'}}>CPF</Text>
-                            <TextInput style={{padding: 4}} keyboardType="email-address"/>
+                            <TextInput style={{padding: 4}} keyboardType='numeric' maxLength={14}
+                            value={CPF} onChangeText={(valor) => setCPF(mascaraCPF(valor))}/>
                         </View>
                         <View style={styles.dataNascimento}>
                             <Text style={{fontWeight: '700'}}>Data de Nascimento</Text>
@@ -73,7 +108,7 @@ export default function cadastro() {
                             )}
                         </View>
                         
-                        <TouchableOpacity style={styles.btn_entrar}>
+                        <TouchableOpacity style={styles.btn_entrar} onPress={finalizarCadastro}>
                             <Text style={{color: '#fff', fontWeight: 'bold', fontSize: 16}}>Inscrever-se</Text>
                         </TouchableOpacity>
                         <View style={styles.registrar}>
@@ -83,6 +118,11 @@ export default function cadastro() {
                             </TouchableOpacity>
                         </View>
                     </View>
+                    {podeVerNotify && (
+                        <View style={styles.warningOverlay}>
+                            <Text style={{fontWeight: 'bold', color: '#D24141'}}>{textNotify}</Text>
+                        </View>
+                    )}
                 </SafeAreaView>
             </ImageBackground>
         </View>
@@ -155,5 +195,19 @@ const styles = StyleSheet.create({
         justifyContent:'space-between', 
         marginHorizontal: 30, 
         marginTop: 25
+    },
+    warningOverlay:{
+        position:'absolute',
+        top: 50,
+        backgroundColor: '#FDEAEA',
+        borderColor: '#D24141',
+        borderWidth: 2,
+        borderStyle: 'solid',
+        padding: 8,
+        width: '80%',
+        borderRadius: 5,
+        alignItems: 'center',
+        right: 35,
+        left: 35,
     }
 });
