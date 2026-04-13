@@ -20,7 +20,7 @@ CREATE TABLE Jogador (
     Nickname        VARCHAR(50)  NOT NULL,
     Email           VARCHAR(255) NOT NULL,
     Senha           VARCHAR(255) NOT NULL,
-    CPF             VARCHAR(14)  NOT NULL,
+    CPF             VARCHAR(14),
     Avatar          VARCHAR(500),
     DataCadastro    TIMESTAMP DEFAULT NOW(),
     Nome            VARCHAR(255) NOT NULL,
