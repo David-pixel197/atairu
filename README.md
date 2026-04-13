@@ -53,7 +53,7 @@ Com o terminal aberto na raiz do projeto (onde está o arquivo docker-compose.ym
 Bash
 
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
 
 O parâmetro -d (detached) faz com que os containers rodem em segundo plano.
