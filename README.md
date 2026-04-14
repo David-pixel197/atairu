@@ -153,35 +153,179 @@ const response = await fetch(`${BASE_URL}/api/jogadores/cadastro`, {
 
 ---
 
-### Testando a conexão manualmente
+## 🎮 API — Endpoints do Jogador
 
-Antes de testar pelo app, confirme que o backend está respondendo com um `curl` ou acessando no navegador:
+Base URL: `http://localhost:8080/api/jogadores`
 
-```bash
-# Cadastrar um jogador de teste
-curl -X POST http://localhost:8080/api/jogadores/cadastro \
-     -H "Content-Type: application/json" \
-     -d '{
-          "email": "teste@email.com",
-          "senha": "senha123",
-          "nickname": "JogadorTeste",
-          "nome": "Usuario de Teste",
-          "cpf": "12345678900",
-          "dataNascimento": "2000-01-01T00:00:00"
-     }'
+### Autenticação
+
+#### Cadastrar jogador
+`POST /cadastro`
+
+Body:
+```json
+{
+  "nickname": "JogadorTeste",
+  "email": "teste@email.com",
+  "senha": "senha123",
+  "nome": "Usuario de Teste",
+  "cpf": "12345678900",
+  "dataNascimento": "2000-01-01"
+}
 ```
 
-Uma resposta com o JSON do jogador criado confirma que o backend e o banco estão funcionando corretamente.
+Resposta `200 OK`: objeto JSON do jogador criado (sem a senha).
 
 ---
 
-### Endpoints disponíveis
+#### Login
+`POST /login`
+
+Body:
+```json
+{
+  "email": "teste@email.com",
+  "senha": "senha123"
+}
+```
+
+Resposta `200 OK`: objeto JSON do jogador autenticado.
+Resposta `400 Bad Request`: mensagem de erro (usuário não encontrado, senha incorreta ou usuário banido).
+
+---
+
+### Leitura
+
+#### Listar todos os jogadores
+`GET /`
+
+Resposta `200 OK`: array com todos os jogadores cadastrados.
+
+---
+
+#### Buscar jogador por ID
+`GET /{id}`
+
+Resposta `200 OK`: objeto JSON do jogador.
+Resposta `400 Bad Request`: `"Jogador não encontrado."`
+
+---
+
+### Atualização
+
+#### Alterar nickname
+`PATCH /{id}/nickname?novoNickname=NovoNome`
+
+Resposta `200 OK`: objeto JSON do jogador atualizado.
+Resposta `400 Bad Request`: `"Esse nickname já está em uso por outro jogador."`
+
+---
+
+#### Alterar CPF
+`PATCH /{id}/cpf?novoCpf=00011122233`
+
+Resposta `200 OK`: objeto JSON do jogador atualizado.
+Resposta `400 Bad Request`: `"Esse CPF já está em uso por outro jogador."`
+
+---
+
+#### Alterar avatar
+`PATCH /{id}/avatar`
+
+Body:
+```json
+{
+  "url": "https://exemplo.com/meu-avatar.png"
+}
+```
+
+Resposta `200 OK`: objeto JSON do jogador atualizado.
+
+---
+
+#### Atualizar km percorridos
+`PATCH /{id}/km`
+
+Body:
+```json
+{
+  "km": 12.5
+}
+```
+
+Resposta `200 OK`: objeto JSON do jogador atualizado.
+Resposta `400 Bad Request`: `"Valor de km inválido."` (caso seja nulo ou negativo).
+
+---
+
+### Exclusão
+
+#### Deletar jogador
+`DELETE /{id}`
+
+Resposta `200 OK`: `"Jogador deletado com sucesso."`
+Resposta `400 Bad Request`: `"Jogador não encontrado."`
+
+---
+
+### Testando com curl
+
+```bash
+# Cadastrar
+curl -X POST http://localhost:8080/api/jogadores/cadastro \
+     -H "Content-Type: application/json" \
+     -d '{
+          "nickname": "JogadorTeste",
+          "email": "teste@email.com",
+          "senha": "senha123",
+          "nome": "Usuario de Teste",
+          "cpf": "12345678900",
+          "dataNascimento": "2000-01-01"
+     }'
+
+# Login
+curl -X POST http://localhost:8080/api/jogadores/login \
+     -H "Content-Type: application/json" \
+     -d '{"email": "teste@email.com", "senha": "senha123"}'
+
+# Buscar por ID
+curl http://localhost:8080/api/jogadores/1
+
+# Alterar nickname
+curl -X PATCH "http://localhost:8080/api/jogadores/1/nickname?novoNickname=NovoNome"
+
+# Alterar CPF
+curl -X PATCH "http://localhost:8080/api/jogadores/1/cpf?novoCpf=00011122233"
+
+# Alterar avatar
+curl -X PATCH http://localhost:8080/api/jogadores/1/avatar \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://exemplo.com/avatar.png"}'
+
+# Atualizar km
+curl -X PATCH http://localhost:8080/api/jogadores/1/km \
+     -H "Content-Type: application/json" \
+     -d '{"km": 12.5}'
+
+# Deletar
+curl -X DELETE http://localhost:8080/api/jogadores/1
+```
+
+---
+
+### Resumo dos endpoints
 
 | Método | Endpoint | Descrição |
 |---|---|---|
 | `POST` | `/api/jogadores/cadastro` | Cadastra um novo jogador |
-| `POST` | `/api/jogadores/login` | Autentica um jogador (email + senha) |
-| `PATCH` | `/api/jogadores/{id}/nickname?novoNickname=` | Atualiza o nickname do jogador |
+| `POST` | `/api/jogadores/login` | Autentica (email + senha) |
+| `GET` | `/api/jogadores` | Lista todos os jogadores |
+| `GET` | `/api/jogadores/{id}` | Busca jogador por ID |
+| `PATCH` | `/api/jogadores/{id}/nickname` | Altera o nickname |
+| `PATCH` | `/api/jogadores/{id}/cpf` | Altera o CPF |
+| `PATCH` | `/api/jogadores/{id}/avatar` | Altera a URL do avatar |
+| `PATCH` | `/api/jogadores/{id}/km` | Atualiza os km percorridos |
+| `DELETE` | `/api/jogadores/{id}` | Deleta o jogador |
 
 ---
 
