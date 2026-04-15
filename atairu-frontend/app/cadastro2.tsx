@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from '@/context/AuthContext';
 import { cadastrar, formatarDataParaApi } from '@/services/authService';
+import BackgroundLoginCadastro from '@/components/background_login';
 
 export default function Cadastro2() {
     const router = useRouter();
@@ -97,101 +98,83 @@ export default function Cadastro2() {
     };
 
     return (
-        <View style={styles.container}>
-            <ImageBackground
-                source={require('../assets/images/background.png')}
-                resizeMode="cover"
-                style={{ flex: 1, justifyContent: 'center' }}
+        <BackgroundLoginCadastro>
+            <Text style={styles.titulo}>Criar Conta</Text>
+
+            <View style={[styles.inputs, styles.sombra]}>
+                <Text style={styles.label}>Nickname</Text>
+                <TextInput
+                    style={{ padding: 4 }}
+                    value={nickname}
+                    onChangeText={(v) => setNickname(v.replace(/\s/g, ''))}
+                />
+            </View>
+
+            <View style={[styles.inputs, styles.sombra]}>
+                <Text style={styles.label}>Nome Completo</Text>
+                <TextInput
+                    style={{ padding: 4 }}
+                    value={nome}
+                    onChangeText={setNome}
+                />
+            </View>
+
+            <View style={[styles.inputs, styles.sombra]}>
+                <Text style={styles.label}>CPF</Text>
+                <TextInput
+                    style={{ padding: 4 }}
+                    keyboardType="numeric"
+                    maxLength={14}
+                    value={CPF}
+                    onChangeText={(v) => setCPF(mascaraCPF(v))}
+                />
+            </View>
+
+            <View style={styles.dataNascimento}>
+                <Text style={{ fontWeight: '700' }}>Data de Nascimento</Text>
+                <TouchableOpacity
+                    onPress={() => showCalendario(true)}
+                    style={{ backgroundColor: '#000', padding: 8, borderRadius: 5 }}
+                >
+                    <Text style={{ color: '#fff' }}>{formatarData(data)}</Text>
+                </TouchableOpacity>
+                {vendoCalendario && (
+                    <DateTimePicker
+                        value={data}
+                        mode="date"
+                        display="default"
+                        onChange={onChange}
+                        maximumDate={new Date()}
+                    />
+                )}
+            </View>
+
+            <TouchableOpacity
+                style={[styles.btn_entrar, carregando && { opacity: 0.7 }]}
+                onPress={finalizarCadastro}
+                disabled={carregando}
             >
-                <SafeAreaView style={{ flex: 1, justifyContent: 'flex-end' }}>
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={require('../assets/images/atairu.png')}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
-                    </View>
-                    <View style={styles.painel}>
-                        <Text style={styles.titulo}>Criar Conta</Text>
+                {carregando ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
+                        Inscrever-se
+                    </Text>
+                )}
+            </TouchableOpacity>
 
-                        <View style={[styles.inputs, styles.sombra]}>
-                            <Text style={styles.label}>Nickname</Text>
-                            <TextInput
-                                style={{ padding: 4 }}
-                                value={nickname}
-                                onChangeText={(v) => setNickname(v.replace(/\s/g, ''))}
-                            />
-                        </View>
-
-                        <View style={[styles.inputs, styles.sombra]}>
-                            <Text style={styles.label}>Nome Completo</Text>
-                            <TextInput
-                                style={{ padding: 4 }}
-                                value={nome}
-                                onChangeText={setNome}
-                            />
-                        </View>
-
-                        <View style={[styles.inputs, styles.sombra]}>
-                            <Text style={styles.label}>CPF</Text>
-                            <TextInput
-                                style={{ padding: 4 }}
-                                keyboardType="numeric"
-                                maxLength={14}
-                                value={CPF}
-                                onChangeText={(v) => setCPF(mascaraCPF(v))}
-                            />
-                        </View>
-
-                        <View style={styles.dataNascimento}>
-                            <Text style={{ fontWeight: '700' }}>Data de Nascimento</Text>
-                            <TouchableOpacity
-                                onPress={() => showCalendario(true)}
-                                style={{ backgroundColor: '#000', padding: 8, borderRadius: 5 }}
-                            >
-                                <Text style={{ color: '#fff' }}>{formatarData(data)}</Text>
-                            </TouchableOpacity>
-                            {vendoCalendario && (
-                                <DateTimePicker
-                                    value={data}
-                                    mode="date"
-                                    display="default"
-                                    onChange={onChange}
-                                    maximumDate={new Date()}
-                                />
-                            )}
-                        </View>
-
-                        <TouchableOpacity
-                            style={[styles.btn_entrar, carregando && { opacity: 0.7 }]}
-                            onPress={finalizarCadastro}
-                            disabled={carregando}
-                        >
-                            {carregando ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                                    Inscrever-se
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-
-                        <View style={styles.registrar}>
-                            <Text>Já tem uma conta? </Text>
-                            <TouchableOpacity onPress={() => router.push('/login')}>
-                                <Text style={{ color: '#0B6586', fontWeight: 'bold' }}>Entrar aqui.</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {podeVerNotify && (
-                        <View style={styles.warningOverlay}>
-                            <Text style={{ fontWeight: 'bold', color: '#D24141' }}>{textNotify}</Text>
-                        </View>
-                    )}
-                </SafeAreaView>
-            </ImageBackground>
-        </View>
+            <View style={styles.registrar}>
+                <Text>Já tem uma conta? </Text>
+                <TouchableOpacity onPress={() => router.push('/login')}>
+                    <Text style={{ color: '#0B6586', fontWeight: 'bold' }}>Entrar aqui.</Text>
+                </TouchableOpacity>
+            </View>
+            {podeVerNotify && (
+                <View style={styles.warningOverlay}>
+                    <Text style={{ fontWeight: 'bold', color: '#D24141' }}>{textNotify}</Text>
+                </View>
+            )}
+        </BackgroundLoginCadastro>
     );
 }
 
@@ -247,7 +230,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginVertical: 15,
-        bottom: -35,
     },
     dataNascimento: {
         flexDirection: 'row',

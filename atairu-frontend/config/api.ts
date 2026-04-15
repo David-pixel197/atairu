@@ -4,7 +4,7 @@
 // Escolha o endereço correto para o seu ambiente:
 
 // Navegador web ou Simulador iOS:
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'http://192.168.1.17:8080';
 
 // Emulador Android (descomente se necessário):
 // const BASE_URL = 'http://10.0.2.2:8080';

@@ -71,14 +71,17 @@ export async function login(payload: LoginPayload): Promise<Jogador> {
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
 
   if (!response.ok) {
-    // O backend retorna uma string simples como mensagem de erro
-    throw new Error(typeof data === 'string' ? data : 'Erro ao fazer login.');
+    throw new Error(responseText || 'Erro ao fazer login.');
   }
 
-  return data as Jogador;
+  try {
+    return JSON.parse(responseText) as Jogador;
+  } catch (e) {
+    throw new Error("Erro ao processar dados do servidor.");
+  }
 }
 
 // ============================================================
