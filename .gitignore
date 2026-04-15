@@ -5,3 +5,7 @@
 
 # Arquivos de log do banco de dados
 /db/postgresql/data
+
+# IDE files
+.idea/
+.vscode/
