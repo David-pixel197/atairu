@@ -6,7 +6,7 @@ Este é o repositório principal do projeto **Ataîru**, que contém a infraestr
 
 ## 🛠️ Tecnologias Utilizadas
 
-* **Backend:** Java 17, Spring Boot, Maven
+* **Backend:** Java 25, Spring Boot, Maven
 * **Banco de Dados:** PostgreSQL com extensão PostGIS
 * **Frontend:** React Native com Expo
 * **Infraestrutura:** Docker e Docker Compose
