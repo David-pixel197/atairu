@@ -1,7 +1,8 @@
 /* =========================================================
-   Ataîru — Esquema físico PostgreSQL
+   Ataîru — Esquema físico PostgreSQL (versão revisada)
    Convertido a partir do modelo lógico.
-   Ajustes aplicados estão comentados inline com "-- FIX:"
+   Ajustes da conversão estão comentados inline com "-- FIX:"
+   Ajustes da revisão do esquema estão com "-- REV:"
    ========================================================= */
 
 CREATE EXTENSION IF NOT EXISTS postgis;
@@ -18,7 +19,10 @@ CREATE TABLE administrador (
     avatar          VARCHAR,
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
-    data_nascimento TIMESTAMP
+    data_nascimento TIMESTAMP,
+    -- REV (RN07): termoAceitoEm é atributo de Usuario no modelo
+    -- conceitual, então vale para os dois perfis. NULL = ainda não aceitou.
+    termo_aceito_em TIMESTAMP
 );
 
 CREATE TABLE jogador (
@@ -33,10 +37,12 @@ CREATE TABLE jogador (
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
     data_nascimento TIMESTAMP,
+    -- REV (RN07): momento em que o jogador aceitou o termo de segurança.
+    -- NULL = ainda não aceitou.
+    termo_aceito_em TIMESTAMP,
     -- FIX: no original, "UNIQUE (Nickname, Email, CPF)" era uma única
     -- constraint composta (só bloqueia se os TRÊS valores coincidirem
-    -- juntos). Separado em três constraints individuais, que é o que
-    -- normalmente se quer para nickname/email/cpf de cadastro.
+    -- juntos). Separado em três constraints individuais.
     UNIQUE (nickname),
     UNIQUE (email),
     UNIQUE (cpf)
@@ -44,11 +50,15 @@ CREATE TABLE jogador (
 
 CREATE TABLE historias (
     id_historia INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    -- FIX: Titulo estava como INTEGER no lógico; título de história é texto.
+    -- FIX: Titulo estava como INTEGER no lógico; título é texto.
     titulo      VARCHAR NOT NULL,
     autor       VARCHAR,
-    progresso   INTEGER DEFAULT 0,
-    km          DECIMAL
+    km          DECIMAL,
+    -- REV (RF12): controla a visibilidade da história para os jogadores.
+    publicada   BOOLEAN DEFAULT FALSE
+    -- REV: a coluna "progresso" foi removida. O progresso é por jogador
+    -- e é calculado pela quantidade de pistas (itens) encontradas,
+    -- veja a view progresso_jogador no final do script.
 );
 
 CREATE TABLE monumentos (
@@ -56,11 +66,12 @@ CREATE TABLE monumentos (
     titulo        VARCHAR,
     descricao     VARCHAR,
     imagem        VARCHAR,
-    -- FIX: cord_x/cord_y (DECIMAL) substituídos por um ponto PostGIS,
-    -- que permite consultas de distância/proximidade nativas
-    -- (ex.: ST_DWithin para "o que está a X metros do jogador").
+    -- FIX: cord_x/cord_y (DECIMAL) substituídos por um ponto PostGIS.
     localizacao   GEOGRAPHY(POINT, 4326) NOT NULL,
     raio          INTEGER,
+    -- REV (RN05): janela de funcionamento do local. NULL = sem restrição.
+    abertura      TIME,
+    fechamento    TIME,
     fk_historias  INTEGER
 );
 
@@ -72,6 +83,9 @@ CREATE TABLE itens (
     -- FIX: cord_x/cord_y (DECIMAL) substituídos por um ponto PostGIS.
     localizacao GEOGRAPHY(POINT, 4326) NOT NULL,
     raio        INTEGER,
+    -- REV (RN05): janela de funcionamento do local. NULL = sem restrição.
+    abertura    TIME,
+    fechamento  TIME,
     fk_historia INTEGER
 );
 
@@ -84,12 +98,13 @@ CREATE TABLE classificacao (
 CREATE TABLE enigma (
     -- FIX: id_enigma estava BOOLEAN PRIMARY KEY no lógico (só permitiria
     -- 2 linhas na tabela inteira). Corrigido para INTEGER/identity.
-    id_enigma     INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    pergunta      VARCHAR,
-    desvendado    BOOLEAN DEFAULT FALSE,
-    dica          VARCHAR,
-    dica_revelada BOOLEAN DEFAULT FALSE,
-    fk_historia   INTEGER
+    id_enigma   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    pergunta    VARCHAR,
+    dica        VARCHAR,
+    fk_historia INTEGER
+    -- REV: "desvendado" e "dica_revelada" saíram daqui. Esses estados
+    -- são por jogador (senão, um jogador resolver o enigma o marcaria
+    -- como resolvido para todos). Ver tabela jogador_enigma.
 );
 
 CREATE TABLE opcoes (
@@ -97,14 +112,23 @@ CREATE TABLE opcoes (
     texto      VARCHAR,
     imagem     VARCHAR,
     correto    BOOLEAN DEFAULT FALSE,
-    -- FIX: fk_enigmas estava tipado BOOLEAN; precisa casar com o tipo
-    -- de enigma.id_enigma (INTEGER) para a FK funcionar.
+    -- FIX: fk_enigmas estava BOOLEAN; precisa casar com enigma.id_enigma.
     fk_enigmas INTEGER
 );
 
+-- REV (RN11): registro de modificações feitas pelos administradores nas
+-- histórias. As FKs usam SET NULL (e não CASCADE) para que o registro
+-- sobreviva à exclusão da história ou do administrador.
+CREATE TABLE historia_logs (
+    id_log           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fk_historia      INTEGER,
+    fk_administrador INTEGER,
+    acao             VARCHAR NOT NULL,
+    data_hora        TIMESTAMP DEFAULT now()
+);
+
 -- ---------------------------------------------------------
--- Tabelas associativas (N:N) — cada uma ganhou PK composta,
--- que faltava no lógico original.
+-- Tabelas associativas (N:N) — cada uma com PK composta.
 -- ---------------------------------------------------------
 
 CREATE TABLE jogador_historias (
@@ -127,8 +151,17 @@ CREATE TABLE visitas (
 
 CREATE TABLE historias_classificacao (
     fk_classificacao INTEGER NOT NULL,
-    fk_historias      INTEGER NOT NULL,
+    fk_historias     INTEGER NOT NULL,
     PRIMARY KEY (fk_classificacao, fk_historias)
+);
+
+-- REV: estado do enigma por jogador (resolvido? dica revelada?).
+CREATE TABLE jogador_enigma (
+    fk_jogador    INTEGER NOT NULL,
+    fk_enigma     INTEGER NOT NULL,
+    desvendado    BOOLEAN DEFAULT FALSE,
+    dica_revelada BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (fk_jogador, fk_enigma)
 );
 
 -- ---------------------------------------------------------
@@ -140,9 +173,7 @@ ALTER TABLE monumentos
     FOREIGN KEY (fk_historias) REFERENCES historias (id_historia)
     ON DELETE CASCADE;
 
--- FIX: no lógico, a FK de Itens referenciava (fk_Historias, fk_historia)
--- duplicado contra (ID_Historia, ID_Historia) — mas a tabela Itens só
--- tem a coluna fk_historia. Reduzido para uma FK simples de uma coluna.
+-- FIX: FK de itens reduzida a uma FK simples de uma coluna.
 ALTER TABLE itens
     ADD CONSTRAINT fk_itens_historias
     FOREIGN KEY (fk_historia) REFERENCES historias (id_historia)
@@ -198,17 +229,52 @@ ALTER TABLE opcoes
     FOREIGN KEY (fk_enigmas) REFERENCES enigma (id_enigma)
     ON DELETE CASCADE;
 
+ALTER TABLE jogador_enigma
+    ADD CONSTRAINT fk_jogador_enigma_jogador
+    FOREIGN KEY (fk_jogador) REFERENCES jogador (id_usuario_j)
+    ON DELETE CASCADE;
+
+ALTER TABLE jogador_enigma
+    ADD CONSTRAINT fk_jogador_enigma_enigma
+    FOREIGN KEY (fk_enigma) REFERENCES enigma (id_enigma)
+    ON DELETE CASCADE;
+
+ALTER TABLE historia_logs
+    ADD CONSTRAINT fk_historia_logs_historia
+    FOREIGN KEY (fk_historia) REFERENCES historias (id_historia)
+    ON DELETE SET NULL;
+
+ALTER TABLE historia_logs
+    ADD CONSTRAINT fk_historia_logs_administrador
+    FOREIGN KEY (fk_administrador) REFERENCES administrador (id_usuario_a)
+    ON DELETE SET NULL;
+
 -- ---------------------------------------------------------
--- Índices espaciais (GIST) — recomendado sempre que houver
--- consultas por proximidade/distância nas colunas geography.
+-- Índices espaciais (GIST) — para consultas por proximidade.
 -- ---------------------------------------------------------
 
 CREATE INDEX idx_monumentos_localizacao ON monumentos USING GIST (localizacao);
 CREATE INDEX idx_itens_localizacao ON itens USING GIST (localizacao);
 
 -- ---------------------------------------------------------
--- NÃO incluída: ALTER TABLE Historias ADD CONSTRAINT FK_Historias_2
--- FOREIGN KEY (ClassIndicativa???) REFERENCES ??? (???);
--- Confirmado como resquício duplicado da relação N:N já coberta por
--- historias_classificacao — removida do esquema físico.
+-- REV: progresso por jogador/história, medido pela quantidade de
+-- pistas (itens) coletadas em relação ao total da história.
+-- Como é calculado, não existe coluna para ele (evita dado duplicado
+-- que poderia ficar inconsistente com o inventário).
 -- ---------------------------------------------------------
+
+CREATE VIEW progresso_jogador AS
+SELECT
+    jh.fk_jogador,
+    jh.fk_historias,
+    COUNT(inv.fk_itens) AS itens_coletados,
+    COUNT(i.id_item)    AS total_itens,
+    ROUND(100.0 * COUNT(inv.fk_itens) / NULLIF(COUNT(i.id_item), 0), 1)
+                        AS percentual
+FROM jogador_historias jh
+LEFT JOIN itens i
+       ON i.fk_historia = jh.fk_historias
+LEFT JOIN inventario inv
+       ON inv.fk_itens = i.id_item
+      AND inv.fk_usuario = jh.fk_jogador
+GROUP BY jh.fk_jogador, jh.fk_historias;
