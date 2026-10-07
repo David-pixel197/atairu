@@ -23,6 +23,9 @@ CREATE TABLE administrador (
     -- REV (RN07): termoAceitoEm é atributo de Usuario no modelo
     -- conceitual, então vale para os dois perfis. NULL = ainda não aceitou.
     termo_aceito_em TIMESTAMP
+
+    UNIQUE (email),
+    UNIQUE (cpf)
 );
 
 CREATE TABLE jogador (
@@ -72,7 +75,7 @@ CREATE TABLE monumentos (
     -- REV (RN05): janela de funcionamento do local. NULL = sem restrição.
     abertura      TIME,
     fechamento    TIME,
-    fk_historias  INTEGER
+    fk_historias  INTEGER NOT NULL
 );
 
 CREATE TABLE itens (
@@ -86,7 +89,7 @@ CREATE TABLE itens (
     -- REV (RN05): janela de funcionamento do local. NULL = sem restrição.
     abertura    TIME,
     fechamento  TIME,
-    fk_historia INTEGER
+    fk_historia INTEGER NOT NULL
 );
 
 CREATE TABLE classificacao (
@@ -101,7 +104,7 @@ CREATE TABLE enigma (
     id_enigma   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     pergunta    VARCHAR,
     dica        VARCHAR,
-    fk_historia INTEGER
+    fk_historia INTEGER NOT NULL
     -- REV: "desvendado" e "dica_revelada" saíram daqui. Esses estados
     -- são por jogador (senão, um jogador resolver o enigma o marcaria
     -- como resolvido para todos). Ver tabela jogador_enigma.
@@ -113,7 +116,7 @@ CREATE TABLE opcoes (
     imagem     VARCHAR,
     correto    BOOLEAN DEFAULT FALSE,
     -- FIX: fk_enigmas estava BOOLEAN; precisa casar com enigma.id_enigma.
-    fk_enigmas INTEGER
+    fk_enigmas INTEGER NOT NULL
 );
 
 -- REV (RN11): registro de modificações feitas pelos administradores nas
