@@ -22,7 +22,7 @@ CREATE TABLE administrador (
     data_nascimento TIMESTAMP,
     -- REV (RN07): termoAceitoEm é atributo de Usuario no modelo
     -- conceitual, então vale para os dois perfis. NULL = ainda não aceitou.
-    termo_aceito_em TIMESTAMP
+    termo_aceito_em TIMESTAMP,
 
     UNIQUE (email),
     UNIQUE (cpf)
