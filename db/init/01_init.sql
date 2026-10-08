@@ -19,7 +19,7 @@ CREATE TABLE administrador (
     avatar          VARCHAR,
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
-    data_nascimento TIMESTAMP,
+    data_nascimento DATE,
     termo_aceito_em TIMESTAMP,   -- vírgula adicionada
 
     UNIQUE (email),
@@ -37,7 +37,7 @@ CREATE TABLE jogador (
     avatar          VARCHAR,
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
-    data_nascimento TIMESTAMP,
+    data_nascimento DATE,
     -- REV (RN07): momento em que o jogador aceitou o termo de segurança.
     -- NULL = ainda não aceitou.
     termo_aceito_em TIMESTAMP,
