@@ -13,16 +13,14 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 CREATE TABLE administrador (
     id_usuario_a    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    email           VARCHAR NOT NULL,
+    email           VARCHAR(254) NOT NULL,
     senha           VARCHAR NOT NULL,
-    cpf             VARCHAR,
+    cpf             VARCHAR(11),
     avatar          VARCHAR,
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
     data_nascimento TIMESTAMP,
-    -- REV (RN07): termoAceitoEm é atributo de Usuario no modelo
-    -- conceitual, então vale para os dois perfis. NULL = ainda não aceitou.
-    termo_aceito_em TIMESTAMP,
+    termo_aceito_em TIMESTAMP,   -- vírgula adicionada
 
     UNIQUE (email),
     UNIQUE (cpf)
@@ -33,9 +31,9 @@ CREATE TABLE jogador (
     nickname        VARCHAR NOT NULL,
     km              DECIMAL DEFAULT 0,
     banido          BOOLEAN DEFAULT FALSE,
-    email           VARCHAR NOT NULL,
+    email           VARCHAR(254) NOT NULL,
     senha           VARCHAR NOT NULL,
-    cpf             VARCHAR,
+    cpf             VARCHAR(11),
     avatar          VARCHAR,
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
