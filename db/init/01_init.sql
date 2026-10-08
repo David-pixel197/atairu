@@ -56,10 +56,12 @@ CREATE TABLE historias (
     autor       VARCHAR,
     km          DECIMAL,
     -- REV (RF12): controla a visibilidade da história para os jogadores.
-    publicada   BOOLEAN DEFAULT FALSE
+    publicada   BOOLEAN DEFAULT FALSE,
     -- REV: a coluna "progresso" foi removida. O progresso é por jogador
     -- e é calculado pela quantidade de pistas (itens) encontradas,
     -- veja a view progresso_jogador no final do script.
+    texto VARCHAR NOT NULL,
+    imagem VARCHAR
 );
 
 CREATE TABLE monumentos (
