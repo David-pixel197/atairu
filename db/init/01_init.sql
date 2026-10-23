@@ -19,9 +19,9 @@ CREATE TABLE administrador (
     avatar          VARCHAR,
     data_cadastro   TIMESTAMP DEFAULT now(),
     nome            VARCHAR,
-    data_nascimento DATE,
-    termo_aceito_em TIMESTAMP,   -- vírgula adicionada
-
+    data_nascimento TIMESTAMP,
+    -- REV (RN07): ... (mantenha o comentário atual)
+    termo_aceito_em TIMESTAMP,
     UNIQUE (email),
     UNIQUE (cpf)
 );
@@ -51,17 +51,13 @@ CREATE TABLE jogador (
 
 CREATE TABLE historias (
     id_historia INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    -- FIX: Titulo estava como INTEGER no lógico; título é texto.
     titulo      VARCHAR NOT NULL,
     autor       VARCHAR,
     km          DECIMAL,
-    -- REV (RF12): controla a visibilidade da história para os jogadores.
-    publicada   BOOLEAN DEFAULT FALSE,
-    -- REV: a coluna "progresso" foi removida. O progresso é por jogador
-    -- e é calculado pela quantidade de pistas (itens) encontradas,
-    -- veja a view progresso_jogador no final do script.
-    texto VARCHAR NOT NULL,
-    imagem VARCHAR
+    texto       VARCHAR NOT NULL,
+    imagem      VARCHAR,
+    -- REV (RF12): ... (mantenha os comentários atuais)
+    publicada   BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE monumentos (
@@ -95,7 +91,9 @@ CREATE TABLE itens (
 CREATE TABLE classificacao (
     id_classificacao INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome             VARCHAR NOT NULL,
-    descricao        VARCHAR
+    descricao        VARCHAR,
+    -- REV (RN12): idade mínima, em anos, para jogar. 0 = livre.
+    idade_minima     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE enigma (
