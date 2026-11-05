@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack.Screen name="cadastro2" options={{ animation: 'simple_push' }}/>
         <Stack.Screen name="home" options={{ animation: 'slide_from_bottom' }}/>
         <Stack.Screen name="historias" options={{ animation: 'slide_from_bottom' }}/>
+        <Stack.Screen name="inventario" options={{ animation: 'slide_from_bottom' }}/>
+        <Stack.Screen name="configuracoes" options={{ animation: 'slide_from_bottom' }}/>
       </Stack>
     </AuthProvider>
   );

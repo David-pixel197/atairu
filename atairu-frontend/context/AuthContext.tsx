@@ -1,29 +1,67 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// 1. Tipagem exata dos dados temporários
+export interface TempUserData {
+  email?: string;
+  senha?: string;
+  cpf?: string;
+  dataNasc?: string;
+  nickname?: string;
+  nomeCompleto?: string;
+  CPF?: string;
+  jogadorId?: number;
+}
 
 interface AuthContextData {
-  tempUserData: {
-    email?: string;
-    senha?: string;
-    cpf?: string;
-    dataNasc?: string;
-    nickname?: string;
-    nomeCompleto?: string;
-    CPF?: string;
-  };
-  updateTempUserData: (newData: object) => void;
+  tempUserData: TempUserData;
+  updateTempUserData: (newData: TempUserData) => void;
   clearTempData: () => void;
 }
+
+const STORAGE_KEY = '@atairu:tempUserData';
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tempUserData, setTempUserData] = useState({});
+  const [tempUserData, setTempUserData] = useState<TempUserData>({});
 
-  const updateTempUserData = (newData: object) => {
-    setTempUserData((prev) => ({ ...prev, ...newData }));
+  // 2. Carrega os dados salvos no AsyncStorage assim que o app inicia
+  useEffect(() => {
+    async function loadStoredData() {
+      try {
+        const storedData = await AsyncStorage.getItem(STORAGE_KEY);
+        if (storedData) {
+          setTempUserData(JSON.parse(storedData));
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados temporários do armazenamento:', error);
+      }
+    }
+
+    loadStoredData();
+  }, []);
+
+  // 3. Atualiza o estado e persiste no AsyncStorage
+  const updateTempUserData = async (newData: TempUserData) => {
+    setTempUserData((prev) => {
+      const updated = { ...prev, ...newData };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch((err) =>
+        console.error('Erro ao salvar no AsyncStorage:', err)
+      );
+      return updated;
+    });
   };
 
-  const clearTempData = () => setTempUserData({});
+  // 4. Limpa o estado e remove do AsyncStorage
+  const clearTempData = async () => {
+    setTempUserData({});
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error('Erro ao limpar dados temporários do AsyncStorage:', error);
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ tempUserData, updateTempUserData, clearTempData }}>

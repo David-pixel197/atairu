@@ -44,13 +44,10 @@ export default function Login() {
         try {
             const jogador = await login({ email, senha });
 
-            // Salva os dados do jogador no contexto global
             updateTempUserData({
                 email: jogador.email,
-                senha: senha,          // senha em texto apenas para exibição temporária
                 nickname: jogador.nickname,
                 nomeCompleto: jogador.nome,
-                cpf: jogador.cpf,
                 dataNasc: jogador.dataNascimento,
                 jogadorId: jogador.id,
             });

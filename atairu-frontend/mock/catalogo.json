@@ -1,0 +1,24 @@
+[
+  {
+    "id_historia": 1,
+    "titulo": "Sonhador",
+    "autor": "John Michael O.",
+    "km": 12.5,
+    "publicada": true,
+    "texto": "Era uma vez...",
+    "imagem": "sonhador.png",
+    "progresso": 10,
+    "jogando": true
+  },
+  {
+    "id_historia": 2,
+    "titulo": "Onde Você Dormiu Ontem À Noite",
+    "autor": "Kurt Donald C.",
+    "km": 8.0,
+    "publicada": true,
+    "texto": "As árvores...",
+    "imagem": "onde_voce_dormiu.png",
+    "progresso": 100,
+    "jogando": false
+  }
+]
