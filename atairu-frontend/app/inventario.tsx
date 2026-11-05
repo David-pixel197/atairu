@@ -9,8 +9,10 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function InventarioScreen() {
+  const router = useRouter();
   const inventorySlots = Array.from({ length: 12 }, (_, index) => index);
 
   return (
@@ -64,7 +66,10 @@ export default function InventarioScreen() {
       </ScrollView>
 
       <View style={styles.footerContainer}>
-        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}
+        onPress={() => {
+                router.push('/home');
+              }}>
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
       </View>

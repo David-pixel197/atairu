@@ -9,7 +9,6 @@ export interface TempUserData {
   dataNasc?: string;
   nickname?: string;
   nomeCompleto?: string;
-  CPF?: string;
   jogadorId?: number;
 }
 

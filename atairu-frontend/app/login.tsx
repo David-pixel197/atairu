@@ -46,8 +46,10 @@ export default function Login() {
 
             updateTempUserData({
                 email: jogador.email,
+                senha: senha,
                 nickname: jogador.nickname,
                 nomeCompleto: jogador.nome,
+                cpf: jogador.cpf,
                 dataNasc: jogador.dataNascimento,
                 jogadorId: jogador.id,
             });

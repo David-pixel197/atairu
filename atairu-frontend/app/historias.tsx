@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import catalogoMock from '../mock/catalogo.json';
+import { useRouter } from 'expo-router';
 
 const imagesMap: { [key: string]: any } = {
   'sonhador.png': require('../assets/images/sonhador.png'),
@@ -18,6 +19,7 @@ const imagesMap: { [key: string]: any } = {
 };
 
 export default function historias() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'catalogo' | 'jornadas'>('jornadas');
   const [searchText, setSearchText] = useState('');
   const historiasFiltradas = catalogoMock.filter((item) => {
@@ -122,7 +124,10 @@ export default function historias() {
       </ScrollView>
 
       <View style={styles.footerContainer}>
-        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}
+        onPress={() => {
+                router.push('/home');
+              }}>
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
       </View>

@@ -10,8 +10,10 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function configuracoes() {
+  const router = useRouter();
   const [avisosSeguranca, setAvisosSeguranca] = useState(true);
   const [modoEscuro, setModoEscuro] = useState(false);
 
@@ -73,7 +75,10 @@ export default function configuracoes() {
       </ScrollView>
 
       <View style={styles.footerContainer}>
-        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}
+        onPress={() => {
+                router.push('/home');
+              }}>
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
       </View>

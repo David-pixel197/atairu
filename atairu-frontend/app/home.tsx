@@ -7,9 +7,20 @@ import {
   Platform,
   Alert,
   Image,
+  Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
+
+const cleanMapStyle = [
+  {
+    "featureType": "poi",
+    "elementType": "labels",
+    "stylers": [{ "visibility": "off" }]
+  }
+];
 
 let MapView: any = null;
 let UrlTile: any = null;
@@ -23,12 +34,20 @@ if (Platform.OS !== 'web') {
 }
 
 export default function home() {
+  const router = useRouter();
   const [region, setRegion] = useState({
     latitude: -23.5505,
     longitude: -46.6333,
     latitudeDelta: 0.005,
     longitudeDelta: 0.005,
   });
+
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const pontosDeInteresse = [
+    { id: '1', latitude: -23.493149, longitude: -46.853933, title: 'Pista 1', description: 'Primeira Pista do Caso' },
+    { id: '2', latitude: -23.516416, longitude: -46.856607, title: 'Monumento 1', description: 'Primeiro Local de Interesse' },
+  ];
 
   const fetchCurrentLocation = async () => {
     if (Platform.OS === 'web') {
@@ -99,14 +118,17 @@ export default function home() {
         <MapView
           style={styles.map}
           region={region}
-          showsUserLocation={true}
+          showsUserLocation={false}
           showsMyLocationButton={false}
           loadingEnabled={true}
+          showsPointsOfInterest={false}
+          customMapStyle={cleanMapStyle}
         >
           <UrlTile
-            urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            urlTemplate="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
             maximumZ={19}
           />
+          
           <Marker
             coordinate={{
               latitude: region.latitude,
@@ -122,8 +144,33 @@ export default function home() {
               />
             </View>
           </Marker>
+
+          {pontosDeInteresse.map((ponto) => (
+            <Marker
+              key={ponto.id}
+              coordinate={{
+                latitude: ponto.latitude,
+                longitude: ponto.longitude,
+              }}
+              title={ponto.title}
+              description={ponto.description}
+            >
+              <View style={styles.customMarkerContainer}>
+                <Image
+                  source={require("../assets/images/ponto_interesse.png")}
+                  style={styles.markerImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </Marker>
+          ))}
         </MapView>
       )}
+
+      {menuOpen && (
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+      )}
+
       <View style={styles.topRightContainer}>
         <TouchableOpacity
           style={styles.compassButton}
@@ -135,8 +182,49 @@ export default function home() {
       </View>
 
       <View style={styles.bottomRightContainer}>
-        <TouchableOpacity style={styles.menuButton} activeOpacity={0.8}>
-          <Ionicons name="menu" size={26} color="#000000" />
+        {menuOpen && (
+          <View style={styles.menuOptionsWrapper}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push('/inventario');
+              }}
+            >
+              <Text style={styles.menuText}>Inventário</Text>
+              <Ionicons name="cube-outline" size={22} color="#000000" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push('/historias');
+              }}
+            >
+              <Text style={styles.menuText}>Histórias</Text>
+              <Ionicons name="book-outline" size={22} color="#000000" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push('/configuracoes');
+              }}
+            >
+              <Text style={styles.menuText}>Configuração</Text>
+              <Ionicons name="settings-outline" size={22} color="#000000" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.menuButton}
+          activeOpacity={0.8}
+          onPress={() => setMenuOpen(!menuOpen)}
+        >
+          <Ionicons name={menuOpen ? "close" : "menu"} size={26} color="#000000" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -180,6 +268,32 @@ const styles = StyleSheet.create({
     bottom: 30,
     right: 20,
     zIndex: 10,
+    alignItems: 'flex-end',
+  },
+  menuOptionsWrapper: {
+    marginBottom: 12,
+    alignItems: 'flex-end',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    width: 170,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  menuText: {
+    color: '#000000',
+    fontSize: 15,
+    fontWeight: '600',
   },
   menuButton: {
     width: 56,
