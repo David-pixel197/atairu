@@ -25,7 +25,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/jogadores/cadastro", "/api/jogadores/login").permitAll()
                         // Permitir alteração de nickname (em um app real, seria ideal proteger essa rota com JWT)
+                        .requestMatchers("/api/historias/**").permitAll()
                         .requestMatchers("/api/jogadores/**").permitAll()
+                        .requestMatchers("/api/inventario/**").permitAll()
                         .anyRequest().authenticated()
                 );
 

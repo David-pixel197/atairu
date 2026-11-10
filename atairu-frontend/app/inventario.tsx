@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,10 +10,75 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 export default function InventarioScreen() {
   const router = useRouter();
-  const inventorySlots = Array.from({ length: 12 }, (_, index) => index);
+  const { tempUserData } = useAuth();
+  
+  const [jogador, setJogador] = useState({
+    nickname: 'Carregando...',
+    km: 0,
+    dataCadastro: '--/--/----',
+  });
+
+  const [itensInventario, setItensInventario] = useState<any[]>([]);
+
+  const fetchDadosJogador = async () => {
+    try {
+      const idUsuario = tempUserData?.jogadorId || -1;
+      const response = await fetch(`http://192.168.1.26:8080/api/jogadores/${idUsuario}`);
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar dados do jogador');
+      }
+
+      const data = await response.json();
+      
+      setJogador({
+        nickname: data.nickname || 'Sem Nome',
+        km: data.km ?? 0,
+        dataCadastro: data.dataCadastro ? formatarData(data.dataCadastro) : '--/--/----',
+      });
+    } catch (error) {
+      console.log('Erro ao carregar perfil:', error);
+      setJogador(prev => ({ ...prev, nickname: 'Erro ao carregar' }));
+    }
+  };
+
+  const fetchInventario = async () => {
+    try {
+      const idUsuario = tempUserData?.jogadorId || 1;
+      const historiaId = 1; // deixe assiom ate eu criar a logica de iniciar uma historia
+      
+      const response = await fetch(`http://192.168.1.26:8080/api/inventario/${idUsuario}/historia/${historiaId}`);
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar inventário');
+      }
+
+      const data = await response.json();
+      setItensInventario(data);
+    } catch (error) {
+      console.log('Erro ao carregar inventário:', error);
+    }
+  };
+
+  const formatarData = (dataString: string) => {
+    try {
+      const dataParte = dataString.split('T')[0];
+      const [ano, mes, dia] = dataParte.split('-');
+      if (ano && mes && dia) return `${dia}/${mes}/${ano}`;
+      return dataString;
+    } catch {
+      return dataString;
+    }
+  };
+
+  useEffect(() => {
+    fetchDadosJogador();
+    fetchInventario();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -32,14 +97,14 @@ export default function InventarioScreen() {
 
           <View style={styles.profileInfo}>
             <View style={styles.nicknameRow}>
-              <Text style={styles.nickname}>Nickname</Text>
+              <Text style={styles.nickname}>{jogador.nickname}</Text>
               <TouchableOpacity activeOpacity={0.7}>
                 <Ionicons name="pencil" size={16} color="#000000" style={styles.editIcon} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.profileDetail}>Distância percorrida: 999km</Text>
-            <Text style={styles.profileDetail}>Entrou em: 22/03/2026</Text>
+            <Text style={styles.profileDetail}>Distância percorrida: {jogador.km}km</Text>
+            <Text style={styles.profileDetail}>Entrou em: {jogador.dataCadastro}</Text>
 
             <View style={styles.levelContainer}>
               <Text style={styles.levelText}>10 Nível</Text>
@@ -51,17 +116,23 @@ export default function InventarioScreen() {
         </View>
 
         <View style={styles.gridContainer}>
-          {inventorySlots.map((slotIndex) => (
-            <View key={slotIndex} style={styles.inventorySlot}>
-              {slotIndex === 0 ? (
-                <Image
-                  source={require('../assets/images/livro.png')}
-                  style={styles.itemImage}
-                  resizeMode="contain"
-                />
-              ) : null}
-            </View>
-          ))}
+          {itensInventario.length > 0 ? (
+            itensInventario.map((inv) => (
+              <View key={inv.id} style={styles.inventorySlot}>
+                {inv.item?.imagens ? (
+                  <Image
+                    source={require('../assets/images/itens/livro.png')} 
+                    style={styles.itemImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Ionicons name="cube-outline" size={24} color="#6B7280" />
+                )}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Nenhum item no inventário.</Text>
+          )}
         </View>
       </ScrollView>
 
@@ -162,7 +233,7 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 16,
   },
   inventorySlot: {
@@ -177,6 +248,13 @@ const styles = StyleSheet.create({
   itemImage: {
     width: '80%',
     height: '80%',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    width: '100%',
+    marginTop: 20,
   },
   footerContainer: {
     position: 'absolute',

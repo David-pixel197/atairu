@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Text,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -42,6 +43,7 @@ export default function home() {
     longitudeDelta: 0.005,
   });
 
+  const [loadingLocation, setLoadingLocation] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const pontosDeInteresse = [
@@ -50,6 +52,8 @@ export default function home() {
   ];
 
   const fetchCurrentLocation = async () => {
+    setLoadingLocation(true);
+
     if (Platform.OS === 'web') {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -60,12 +64,16 @@ export default function home() {
               latitudeDelta: 0.005,
               longitudeDelta: 0.005,
             });
+            setLoadingLocation(false);
           },
           (error) => {
             console.log('Erro de geolocalização web:', error);
+            setLoadingLocation(false);
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
         );
+      } else {
+        setLoadingLocation(false);
       }
       return;
     }
@@ -78,7 +86,18 @@ export default function home() {
           'Permissão negada',
           'Precisamos de permissão de acesso à localização para mostrar a sua posição real no mapa.'
         );
+        setLoadingLocation(false);
         return;
+      }
+
+      let lastKnown = await Location.getLastKnownPositionAsync({});
+      if (lastKnown) {
+        setRegion({
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        });
       }
 
       let currentLocation = await Location.getCurrentPositionAsync({
@@ -95,6 +114,8 @@ export default function home() {
       });
     } catch (error) {
       console.log('Erro ao obter localização mobile:', error);
+    } finally {
+      setLoadingLocation(false);
     }
   };
 
@@ -165,6 +186,15 @@ export default function home() {
             </Marker>
           ))}
         </MapView>
+      )}
+
+      {loadingLocation && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color="#0E6280" />
+            <Text style={styles.loadingText}>Obtendo sua localização...</Text>
+          </View>
+        </View>
       )}
 
       {menuOpen && (
@@ -243,6 +273,31 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 50,
+    alignSelf: 'center',
+    zIndex: 20,
+  },
+  loadingBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: '#333',
+    fontSize: 13,
+    fontWeight: '600',
   },
   topRightContainer: {
     position: 'absolute',

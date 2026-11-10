@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,26 +8,49 @@ import {
   ScrollView,
   SafeAreaView,
   ImageBackground,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import catalogoMock from '../mock/catalogo.json';
 import { useRouter } from 'expo-router';
 
 const imagesMap: { [key: string]: any } = {
-  'sonhador.png': require('../assets/images/sonhador.png'),
-  'onde_voce_dormiu.png': require('../assets/images/onde_voce_dormiu.png'),
+  'sonhador.png': require('../assets/images/catalogo/sonhador.png'),
+  'onde_voce_dormiu.png': require('../assets/images/catalogo/onde_voce_dormiu.png'),
 };
 
-export default function historias() {
+export default function HistoriasScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'catalogo' | 'jornadas'>('jornadas');
   const [searchText, setSearchText] = useState('');
-  const historiasFiltradas = catalogoMock.filter((item) => {
+  
+  const [historias, setHistorias] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    fetch('http://192.168.1.26:8080/api/historias')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Erro ao carregar as histórias do servidor.');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setHistorias(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setErro('Não foi possível conectar ao servidor.');
+        setLoading(false);
+      });
+  }, []);
+
+  const historiasFiltradas = historias.filter((item) => {
     const termo = searchText.toLowerCase();
-    return (
-      item.titulo.toLowerCase().includes(termo) ||
-      item.autor.toLowerCase().includes(termo)
-    );
+    const tituloMatch = item.titulo ? item.titulo.toLowerCase().includes(termo) : false;
+    const autorMatch = item.autor ? item.autor.toLowerCase().includes(termo) : false;
+    return tituloMatch || autorMatch;
   });
 
   return (
@@ -68,66 +91,77 @@ export default function historias() {
           </TouchableOpacity>
         </View>
 
-        {activeTab === 'catalogo' ? (
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#0E6280" />
+            <Text style={styles.loadingText}>Carregando histórias...</Text>
+          </View>
+        ) : erro ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>{erro}</Text>
+          </View>
+        ) : activeTab === 'catalogo' ? (
           <View style={styles.coversGrid}>
             {historiasFiltradas.map((item) => {
               const imageSource = imagesMap[item.imagem] || { uri: item.imagem };
 
               return (
-                <TouchableOpacity key={item.id_historia} style={styles.coverCard} activeOpacity={0.8}>
+                <TouchableOpacity key={item.id} style={styles.coverCard} activeOpacity={0.8}>
                   <ImageBackground
                     source={imageSource}
                     style={styles.coverImageBackground}
                     imageStyle={styles.coverImageStyle}
-                  >
-                  </ImageBackground>
+                  />
                 </TouchableOpacity>
               );
             })}
           </View>
         ) : (
-            <View style={styles.journeyList}>
-                {historiasFiltradas.map((item) => {
-                    const progresso = item.progresso ?? (item.publicada ? 10 : 0);
-                    const isCompleto = progresso === 100;
+          <View style={styles.journeyList}>
+            {historiasFiltradas.map((item) => {
+              const progresso = item.progresso ?? (item.publicada ? 100 : 0);
+              const isCompleto = progresso === 100;
 
-                    return (
-                    <View key={item.id_historia} style={styles.journeyCard}>
-                        <View style={styles.journeyHeader}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.journeyTitle}>{item.titulo}</Text>
-                            <Text style={styles.journeyAuthor}>{item.autor}</Text>
-                        </View>
-
-                        {item.jogando && (
-                            <View style={styles.badgeJogando}>
-                            <Text style={styles.badgeJogandoText}>Jogando</Text>
-                            </View>
-                        )}
-                        </View>
-
-                        <Text style={styles.journeyStatus}>
-                        {isCompleto ? 'Completo' : 'Incompleto'}
-                        </Text>
-
-                        <View style={styles.progressContainer}>
-                        <View style={styles.progressBarBackground}>
-                            <View style={[styles.progressBarFill, { width: `${progresso}%` }]} />
-                        </View>
-                        <Text style={styles.progressText}>{progresso}%</Text>
-                        </View>
+              return (
+                <View key={item.id} style={styles.journeyCard}>
+                  <View style={styles.journeyHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.journeyTitle}>{item.titulo}</Text>
+                      <Text style={styles.journeyAuthor}>{item.autor}</Text>
                     </View>
-                    );
-                })}
-            </View>
+
+                    {item.jogando && (
+                      <View style={styles.badgeJogando}>
+                        <Text style={styles.badgeJogandoText}>Jogando</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <Text style={styles.journeyStatus}>
+                    {isCompleto ? 'Completo' : 'Incompleto'}
+                  </Text>
+
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBarBackground}>
+                      <View style={[styles.progressBarFill, { width: `${progresso}%` }]} />
+                    </View>
+                    <Text style={styles.progressText}>{progresso}%</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
 
       <View style={styles.footerContainer}>
-        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}
-        onPress={() => {
-                router.push('/home');
-              }}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          activeOpacity={0.8}
+          onPress={() => {
+            router.push('/home');
+          }}
+        >
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
       </View>
@@ -290,6 +324,21 @@ const styles = StyleSheet.create({
     width: 36,
     textAlign: 'right',
   },
+  centerContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#D9534F',
+    fontSize: 14,
+    textAlign: 'center',
+  },
   footerContainer: {
     position: 'absolute',
     bottom: 30,
@@ -308,6 +357,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 5,
   },
 });
