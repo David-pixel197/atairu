@@ -56,13 +56,12 @@ export default function Cadastro2() {
 
     const finalizarCadastro = async () => {
         const nomeTratado = nome.trim();
-        if (!data)              return showNotify('Aviso: Selecione sua data de nascimento!');
+        if (!data)             return showNotify('Aviso: Selecione sua data de nascimento!');
         if (nomeTratado.length < 1) return showNotify('Aviso: Digite seu nome!');
         if (!nomeTratado.includes(' ')) return showNotify('Aviso: Digite seu nome completo!');
         if (nickname.length < 1) return showNotify('Aviso: Digite um nickname!');
         if (CPF.length < 14)    return showNotify('Aviso: Digite um CPF válido!');
 
-        // Os campos de email e senha vêm da etapa anterior (cadastro.tsx)
         const { email, senha } = tempUserData as any;
         if (!email || !senha) {
             return showNotify('Aviso: Dados da etapa anterior não encontrados. Volte e tente novamente.');
@@ -75,23 +74,18 @@ export default function Cadastro2() {
                 senha,
                 nickname,
                 nome: nomeTratado,
-                cpf: CPF.replace(/\D/g, ''), // envia somente dígitos para o backend
-                dataNascimento: formatarDataParaApi(data), // "YYYY-MM-DD"
+                cpf: CPF.replace(/\D/g, ''),
+                dataNascimento: formatarDataParaApi(data),
             });
-
-            // Atualiza o contexto com os dados confirmados pelo backend
             updateTempUserData({
-                email: jogador.email,
-                nickname: jogador.nickname,
-                nomeCompleto: jogador.nome,
-                cpf: jogador.cpf,
-                dataNasc: jogador.dataNascimento,
                 jogadorId: jogador.id,
             });
+            console.log("Jogador cadastrado com sucesso:", jogador);
 
             router.push('/home');
         } catch (error: any) {
             showNotify(`Erro: ${error.message}`);
+            console.log(`Erro no cadastro: ${error.message}`);
         } finally {
             setCarregando(false);
         }
@@ -239,7 +233,7 @@ const styles = StyleSheet.create({
     },
     warningOverlay: {
         position: 'absolute',
-        top: 50,
+        top: 550,
         backgroundColor: '#FDEAEA',
         borderColor: '#D24141',
         borderWidth: 2,

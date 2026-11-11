@@ -1,4 +1,4 @@
-package atairu.atairu_backend.repository;
+package atairu.atairu_backend.dto;
 
 import atairu.atairu_backend.model.Item;
 

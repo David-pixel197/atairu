@@ -34,7 +34,6 @@ public class Historia {
     @Column(nullable = false)
     private Boolean publicada = false;
 
-    // Relacionamento N:N com Classificacao via tabela associativa
     @ManyToMany
     @JoinTable(
         name = "historias_classificacao",

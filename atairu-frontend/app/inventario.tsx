@@ -7,6 +7,7 @@ import {
   ScrollView,
   SafeAreaView,
   Image,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,7 +15,16 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function InventarioScreen() {
   const router = useRouter();
-  const { tempUserData } = useAuth();
+  const { tempUserData, historiaId } = useAuth();
+
+  const imagensItens: { [key: string]: any } = {
+    'livro.png': require('../assets/images/itens/livro.png'),
+    'carta.png': require('../assets/images/itens/carta.png'),
+    'foto_familia.png': require('../assets/images/itens/foto_familia.png'),
+    'antidepressivos.png': require('../assets/images/itens/antidepressivos.png'),
+    'celular.png': require('../assets/images/itens/celular.png'),
+    'dossie.png': require('../assets/images/itens/dossie.png'),
+  };
   
   const [jogador, setJogador] = useState({
     nickname: 'Carregando...',
@@ -23,6 +33,9 @@ export default function InventarioScreen() {
   });
 
   const [itensInventario, setItensInventario] = useState<any[]>([]);
+  const itensVisiveis = historiaId > 0 ? itensInventario : [];
+  
+  const [itemSelecionado, setItemSelecionado] = useState<any>(null);
 
   const fetchDadosJogador = async () => {
     try {
@@ -47,9 +60,10 @@ export default function InventarioScreen() {
   };
 
   const fetchInventario = async () => {
+    if (historiaId <= 0) return;
+
     try {
       const idUsuario = tempUserData?.jogadorId || 1;
-      const historiaId = 1; // deixe assiom ate eu criar a logica de iniciar uma historia
       
       const response = await fetch(`http://192.168.1.26:8080/api/inventario/${idUsuario}/historia/${historiaId}`);
       
@@ -78,7 +92,7 @@ export default function InventarioScreen() {
   useEffect(() => {
     fetchDadosJogador();
     fetchInventario();
-  }, []);
+  }, [historiaId]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -116,19 +130,24 @@ export default function InventarioScreen() {
         </View>
 
         <View style={styles.gridContainer}>
-          {itensInventario.length > 0 ? (
-            itensInventario.map((inv) => (
-              <View key={inv.id} style={styles.inventorySlot}>
+          {itensVisiveis.length > 0 ? (
+            itensVisiveis.map((inv) => (
+              <TouchableOpacity
+                key={inv.id}
+                style={styles.inventorySlot}
+                activeOpacity={0.7}
+                onPress={() => inv.item && setItemSelecionado(inv.item)}
+              >
                 {inv.item?.imagens ? (
                   <Image
-                    source={require('../assets/images/itens/livro.png')} 
+                    source={imagensItens[inv.item.imagens]}
                     style={styles.itemImage}
                     resizeMode="contain"
                   />
                 ) : (
                   <Ionicons name="cube-outline" size={24} color="#6B7280" />
                 )}
-              </View>
+              </TouchableOpacity>
             ))
           ) : (
             <Text style={styles.emptyText}>Nenhum item no inventário.</Text>
@@ -136,11 +155,58 @@ export default function InventarioScreen() {
         </View>
       </ScrollView>
 
+      <Modal
+        visible={itemSelecionado !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setItemSelecionado(null)}
+      >
+        <View style={styles.inspectOverlay}>
+          {itemSelecionado && (
+            <View style={styles.inspectContainer}>
+              {/* Botão de fechar */}
+              <TouchableOpacity
+                style={styles.inspectCloseButton}
+                onPress={() => setItemSelecionado(null)}
+              >
+                <Ionicons name="close" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              {itemSelecionado.imagens && imagensItens[itemSelecionado.imagens] && (
+                <Image
+                  source={imagensItens[itemSelecionado.imagens]}
+                  style={styles.inspectImage}
+                  resizeMode="contain"
+                />
+              )}
+
+              <Text style={styles.inspectTitle}>{itemSelecionado.nome}</Text>
+
+              <View style={styles.inspectDescriptionBox}>
+                <ScrollView 
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={styles.scrollTextContent}
+                >
+                  <Text style={styles.inspectDescriptionText}>
+                    {itemSelecionado.descricao 
+                      ? itemSelecionado.descricao
+                          .replace(/\\n/g, '\n')
+                          .replace(/\\\\n/g, '\n')
+                          .replace(/\\r\\n/g, '\n')
+                      : ''}
+                  </Text>
+                </ScrollView>
+              </View>
+            </View>
+          )}
+        </View>
+      </Modal>
+
       <View style={styles.footerContainer}>
         <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}
         onPress={() => {
-                router.push('/home');
-              }}>
+              router.push('/home');
+            }}>
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
       </View>
@@ -275,5 +341,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 6,
+  },
+  inspectOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  inspectContainer: {
+    width: '100%',
+    maxWidth: 380,
+    maxHeight: '80%',
+    alignItems: 'center',
+  },
+  inspectCloseButton: {
+    position: 'absolute',
+    top: -40,
+    right: 0,
+    padding: 8,
+    zIndex: 10,
+  },
+  inspectImage: {
+    width: 100,
+    height: 100,
+    marginBottom: 12,
+  },
+  inspectTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  inspectDescriptionBox: {
+    backgroundColor: 'rgba(25, 25, 25, 0.98)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#444444',
+    width: '100%',
+    maxHeight: 320,
+  },
+  scrollTextContent: {
+    paddingRight: 4,
+  },
+  inspectDescriptionText: {
+    fontSize: 14,
+    color: '#E5E7EB',
+    lineHeight: 22,
+    textAlign: 'left',
   },
 });

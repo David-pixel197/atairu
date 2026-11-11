@@ -3,11 +3,13 @@ package atairu.atairu_backend.controller;
 import atairu.atairu_backend.model.Jogador;
 import atairu.atairu_backend.service.JogadorService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -21,12 +23,21 @@ public class JogadorController {
     // POST /api/jogadores/cadastro
     // Body: { nickname, email, senha, nome, cpf, dataNascimento }
     // -------------------------
-    @PostMapping("/cadastro")
+    /*@PostMapping("/cadastro")
     public ResponseEntity<?> cadastrar(@RequestBody Jogador jogador) {
         try {
             return ResponseEntity.ok(service.cadastrar(jogador));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }*/
+
+    @PostMapping("/cadastro")
+    public ResponseEntity<?> cadastrar(@RequestBody Jogador jogador) {
+        try {
+            return ResponseEntity.ok(service.cadastrar(jogador));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("erro", e.getMessage()));
         }
     }
 

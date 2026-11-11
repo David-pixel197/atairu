@@ -9,11 +9,13 @@ import {
   Image,
   Text,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
+import { useAuth } from '@/context/AuthContext';
 
 const cleanMapStyle = [
   {
@@ -26,16 +28,30 @@ const cleanMapStyle = [
 let MapView: any = null;
 let UrlTile: any = null;
 let Marker: any = null;
+let Circle: any = null;
 
 if (Platform.OS !== 'web') {
   const Maps = require('react-native-maps');
   MapView = Maps.default;
   UrlTile = Maps.UrlTile;
   Marker = Maps.Marker;
+  Circle = Maps.Circle;
+}
+
+interface ItemPista {
+  idItem: number;
+  nome: string;
+  descricao: string;
+  imagens: string;
+  latitude: number;
+  longitude: number;
+  raio: number;
 }
 
 export default function home() {
   const router = useRouter();
+  const { tempUserData, historiaId } = useAuth();
+
   const [region, setRegion] = useState({
     latitude: -23.5505,
     longitude: -46.6333,
@@ -45,11 +61,34 @@ export default function home() {
 
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pontosDeInteresse, setPontosDeInteresse] = useState<ItemPista[]>([]);
+  
+  const [itemColetadoModal, setItemColetadoModal] = useState<ItemPista | null>(null);
 
-  const pontosDeInteresse = [
-    { id: '1', latitude: -23.493149, longitude: -46.853933, title: 'Pista 1', description: 'Primeira Pista do Caso' },
-    { id: '2', latitude: -23.516416, longitude: -46.856607, title: 'Monumento 1', description: 'Primeiro Local de Interesse' },
-  ];
+  const imagensItens: { [key: string]: any } = {
+    'livro.png': require('../assets/images/itens/livro.png'),
+    'carta.png': require('../assets/images/itens/carta.png'),
+    'foto_familia.png': require('../assets/images/itens/foto_familia.png'),
+    'antidepressivos.png': require('../assets/images/itens/antidepressivos.png'),
+    'celular.png': require('../assets/images/itens/celular.png'),
+    'dossie.png': require('../assets/images/itens/dossie.png'),
+  };
+
+  const fetchItensHistoria = async () => {
+    if (historiaId <= 0) {
+      setPontosDeInteresse([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://192.168.1.26:8080/api/historias/${historiaId}/itens`);
+      if (!response.ok) throw new Error('Erro ao buscar itens da história');
+      const data = await response.json();
+      setPontosDeInteresse(data);
+    } catch (error) {
+      console.log('Erro ao carregar pistas do backend:', error);
+    }
+  };
 
   const fetchCurrentLocation = async () => {
     setLoadingLocation(true);
@@ -119,9 +158,97 @@ export default function home() {
     }
   };
 
+  const calcularDistanciaEmMetros = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const handlePressionarPista = async (ponto: ItemPista) => {
+    const distancia = calcularDistanciaEmMetros(
+      region.latitude,
+      region.longitude,
+      ponto.latitude,
+      ponto.longitude
+    );
+
+    const raioPermitido = ponto.raio || 30;
+
+    if (distancia > raioPermitido) { //ocorre uma validacao dupla(back end confere tbm), nao confiar apenas no front
+      Alert.alert(
+        "Muito longe!",
+        `Você está a ${Math.round(distancia)} metros deste item. Chegue mais perto (dentro de ${raioPermitido}m) para coletá-lo.`
+      );
+      return;
+    }
+
+    try {
+      const idUsuario = tempUserData?.jogadorId || 1;
+      
+      const response = await fetch('http://192.168.1.26:8080/api/inventario/coletar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jogadorId: idUsuario,
+          itemId: ponto.idItem,
+          latitudeJogador: region.latitude,
+          longitudeJogador: region.longitude,
+        }),
+      });
+
+      const respostaTexto = await response.text();
+
+      if (!response.ok) {
+        throw new Error(respostaTexto || 'Erro ao coletar item');
+      }
+
+      // Sucesso!
+      setItemColetadoModal(ponto);
+      setPontosDeInteresse(prev => prev.filter(p => p.idItem !== ponto.idItem));
+
+    } catch (error: any) {
+      console.log('Erro detalhado:', error);
+      Alert.alert("Motivo do Erro", error.message);
+    }
+  };
+
+  const verificarItensIniciaisAutomaticos = async () => {
+    if (historiaId <= 0) return;
+
+    try {
+      const idUsuario = tempUserData?.jogadorId || 1;
+      
+      const response = await fetch(`http://192.168.1.26:8080/api/inventario/verificar-iniciais?jogadorId=${idUsuario}&historiaId=${historiaId}`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const novosItens = await response.json();
+
+        if (novosItens && novosItens.length > 0) {
+          setItemColetadoModal(novosItens[0]);
+        }
+
+        fetchItensHistoria();
+      }
+    } catch (error) {
+      console.log('Erro ao processar itens iniciais automáticos:', error);
+    }
+  };
+
   useEffect(() => {
     fetchCurrentLocation();
-  }, []);
+    fetchItensHistoria();
+    verificarItensIniciaisAutomaticos();
+  }, [historiaId]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -167,26 +294,71 @@ export default function home() {
           </Marker>
 
           {pontosDeInteresse.map((ponto) => (
-            <Marker
-              key={ponto.id}
-              coordinate={{
-                latitude: ponto.latitude,
-                longitude: ponto.longitude,
-              }}
-              title={ponto.title}
-              description={ponto.description}
-            >
-              <View style={styles.customMarkerContainer}>
-                <Image
-                  source={require("../assets/images/ponto_interesse.png")}
-                  style={styles.markerImage}
-                  resizeMode="contain"
+            <React.Fragment key={ponto.idItem.toString()}>
+              <Marker
+                coordinate={{
+                  latitude: ponto.latitude,
+                  longitude: ponto.longitude,
+                }}
+                title={ponto.nome}
+                onPress={() => handlePressionarPista(ponto)}
+              >
+                <View style={styles.customMarkerContainer}>
+                  <Image
+                    source={require("../assets/images/ponto_interesse.png")}
+                    style={styles.markerImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              </Marker>
+
+              {ponto.raio && (
+                <Circle
+                  center={{
+                    latitude: ponto.latitude,
+                    longitude: ponto.longitude,
+                  }}
+                  radius={ponto.raio}
+                  strokeColor="rgba(14, 98, 128, 0.5)"
+                  fillContent="rgba(14, 98, 128, 0.15)"
+                  fillColor="rgba(14, 98, 128, 0.15)"
                 />
-              </View>
-            </Marker>
+              )}
+            </React.Fragment>
           ))}
         </MapView>
       )}
+
+      <Modal
+        visible={itemColetadoModal !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setItemColetadoModal(null)}
+      >
+        <TouchableOpacity 
+          style={styles.rewardOverlay} 
+          activeOpacity={1} 
+          onPress={() => setItemColetadoModal(null)}
+        >
+          <View style={styles.rewardContent}>
+            <Text style={styles.rewardHeaderTitle}>Novo Item{'\n'}desbloqueado!</Text>
+
+            {itemColetadoModal && imagensItens[itemColetadoModal.imagens] && (
+              <Image
+                source={imagensItens[itemColetadoModal.imagens]}
+                style={styles.rewardItemImage}
+                resizeMode="contain"
+              />
+            )}
+
+            <Text style={styles.rewardItemName}>
+              {itemColetadoModal?.nome}
+            </Text>
+
+            <Text style={styles.rewardFooterText}>Clique para continuar</Text>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {loadingLocation && (
         <View style={styles.loadingOverlay}>
@@ -372,5 +544,43 @@ const styles = StyleSheet.create({
   markerImage: {
     width: '100%',
     height: '100%',
+  },
+  rewardOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  rewardContent: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardHeaderTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 40,
+    letterSpacing: 0.5,
+  },
+  rewardItemImage: {
+    width: 180,
+    height: 180,
+    marginBottom: 40,
+  },
+  rewardItemName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 60,
+  },
+  rewardFooterText: {
+    fontSize: 16,
+    color: '#CCCCCC',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

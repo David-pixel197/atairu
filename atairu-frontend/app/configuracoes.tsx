@@ -11,11 +11,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 export default function configuracoes() {
   const router = useRouter();
   const [avisosSeguranca, setAvisosSeguranca] = useState(true);
   const [modoEscuro, setModoEscuro] = useState(false);
+  const { clearTempData } = useAuth();
+  const handleLogout = async () => {
+    try {
+      await clearTempData();
+      router.replace('/login');
+    } catch (error) {
+      console.log('Erro ao fazer logout:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -69,7 +79,7 @@ export default function configuracoes() {
           <Text style={styles.settingLabel}>Privacidade e Segurança</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.actionRow} activeOpacity={0.7} onPress={handleLogout}>
           <Text style={styles.logoutLabel}>Sair da conta</Text>
         </TouchableOpacity>
       </ScrollView>

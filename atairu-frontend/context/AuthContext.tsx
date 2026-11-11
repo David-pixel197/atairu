@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 1. Tipagem exata dos dados temporários
@@ -16,16 +16,20 @@ interface AuthContextData {
   tempUserData: TempUserData;
   updateTempUserData: (newData: TempUserData) => void;
   clearTempData: () => void;
+  historiaId: number;
+  updateHistoriaId: (historiaId: number) => Promise<void>;
 }
 
 const STORAGE_KEY = '@atairu:tempUserData';
+const HISTORIA_STORAGE_KEY = '@idHistoriaAtiva';
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tempUserData, setTempUserData] = useState<TempUserData>({});
+  const [historiaId, setHistoriaId] = useState(-1);
+  const historiaFoiAtualizada = useRef(false);
 
-  // 2. Carrega os dados salvos no AsyncStorage assim que o app inicia
   useEffect(() => {
     async function loadStoredData() {
       try {
@@ -33,15 +37,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (storedData) {
           setTempUserData(JSON.parse(storedData));
         }
+
+        const storedHistoriaId = await AsyncStorage.getItem(HISTORIA_STORAGE_KEY);
+        const parsedHistoriaId = storedHistoriaId === null ? -1 : Number(storedHistoriaId);
+        if (!historiaFoiAtualizada.current && Number.isInteger(parsedHistoriaId)) {
+          setHistoriaId(parsedHistoriaId);
+        }
       } catch (error) {
-        console.error('Erro ao carregar dados temporários do armazenamento:', error);
+        console.error('Erro ao carregar dados do armazenamento:', error);
       }
     }
 
     loadStoredData();
   }, []);
 
-  // 3. Atualiza o estado e persiste no AsyncStorage
   const updateTempUserData = async (newData: TempUserData) => {
     setTempUserData((prev) => {
       const updated = { ...prev, ...newData };
@@ -52,18 +61,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // 4. Limpa o estado e remove do AsyncStorage
   const clearTempData = async () => {
     setTempUserData({});
+    setHistoriaId(-1);
+    historiaFoiAtualizada.current = true;
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.multiRemove([STORAGE_KEY, HISTORIA_STORAGE_KEY]);
     } catch (error) {
       console.error('Erro ao limpar dados temporários do AsyncStorage:', error);
     }
   };
 
+  const updateHistoriaId = async (newHistoriaId: number) => {
+    historiaFoiAtualizada.current = true;
+    setHistoriaId(newHistoriaId);
+    try {
+      await AsyncStorage.setItem(HISTORIA_STORAGE_KEY, String(newHistoriaId));
+    } catch (error) {
+      console.error('Erro ao salvar a história ativa:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ tempUserData, updateTempUserData, clearTempData }}>
+    <AuthContext.Provider
+      value={{ tempUserData, updateTempUserData, clearTempData, historiaId, updateHistoriaId }}
+    >
       {children}
     </AuthContext.Provider>
   );

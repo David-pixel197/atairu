@@ -16,6 +16,7 @@ public class Item {
     @Column(nullable = false)
     private String nome;
 
+    @Column(columnDefinition = "TEXT")
     private String descricao;
 
     private String imagens;

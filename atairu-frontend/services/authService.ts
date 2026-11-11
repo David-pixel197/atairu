@@ -99,13 +99,16 @@ export async function cadastrar(payload: CadastroPayload): Promise<Jogador> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(typeof data === 'string' ? data : 'Erro ao cadastrar.');
+  const responseText = await response.text();
+  let data: any = {};
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch (e) {
+    data = { erro: responseText };
   }
-
+  if (!response.ok) {
+    throw new Error(data.erro || data.message || 'Erro ao cadastrar.');
+  }
   return data as Jogador;
 }
 

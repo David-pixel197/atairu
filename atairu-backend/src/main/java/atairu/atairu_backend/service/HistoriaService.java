@@ -26,7 +26,6 @@ public class HistoriaService {
             throw new IllegalArgumentException("O texto da história é obrigatório.");
         }
 
-        // Garante que nasce despublicada se vier nula
         if (historia.getPublicada() == null) {
             historia.setPublicada(false);
         }
@@ -75,5 +74,9 @@ public class HistoriaService {
             throw new IllegalArgumentException("História não encontrada.");
         }
         repository.deleteById(id);
+    }
+
+    public List<Historia> listarHistoriasPorJogador(Long jogadorId) {
+        return repository.findHistoriasByJogadorId(jogadorId);
     }
 }

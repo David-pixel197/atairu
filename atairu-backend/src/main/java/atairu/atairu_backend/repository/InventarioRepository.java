@@ -1,6 +1,8 @@
 package atairu.atairu_backend.repository;
 
 import atairu.atairu_backend.model.Inventario;
+import atairu.atairu_backend.model.Jogador;
+import atairu.atairu_backend.model.Item;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,4 +14,6 @@ public interface InventarioRepository extends JpaRepository<Inventario, Long> {
 
     @Query("SELECT i FROM Inventario i WHERE i.usuario.id = :jogadorId AND i.item.historia.id = :historiaId")
     List<Inventario> findByUsuarioIdAndHistoriaId(@Param("jogadorId") Long jogadorId, @Param("historiaId") Long historiaId);
+
+    boolean existsByUsuarioAndItem(Jogador usuario, Item item);
 }

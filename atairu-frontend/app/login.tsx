@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     },
     warningOverlay: {
         position: 'absolute',
-        top: 340,
+        top: 550,
         backgroundColor: '#FDEAEA',
         borderColor: '#D24141',
         borderWidth: 2,

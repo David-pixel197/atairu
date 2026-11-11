@@ -1,13 +1,18 @@
 package atairu.atairu_backend.controller;
 
+import atairu.atairu_backend.dto.ItemResponseDTO;
 import atairu.atairu_backend.model.Historia;
+import atairu.atairu_backend.model.Item;
+import atairu.atairu_backend.repository.ItemRepository;
 import atairu.atairu_backend.service.HistoriaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import atairu.atairu_backend.service.HistoriaService;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -17,9 +22,14 @@ public class HistoriaController {
     @Autowired
     private HistoriaService service;
 
+    @Autowired
+    private ItemRepository itemRepository;
+
+    @Autowired
+    private HistoriaService historiaService;
+
     // -------------------------
     // POST /api/historias
-    // Body: { titulo, autor, km, texto, imagem, publicada }
     // -------------------------
     @PostMapping
     public ResponseEntity<?> cadastrar(@RequestBody Historia historia) {
@@ -51,8 +61,22 @@ public class HistoriaController {
     }
 
     // -------------------------
+    // GET /api/historias/{idHistoria}/itens
+    // -------------------------
+    @GetMapping("/{idHistoria}/itens")
+    public ResponseEntity<List<ItemResponseDTO>> listarItensPorHistoria(@PathVariable Long idHistoria) {
+        List<Item> itens = itemRepository.findByHistoria_Id(idHistoria);
+        
+        // Mapeia para o DTO para evitar o loop infinito do JTS Point
+        List<ItemResponseDTO> resposta = itens.stream()
+                .map(ItemResponseDTO::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(resposta);
+    }
+
+    // -------------------------
     // PATCH /api/historias/{id}/publicada
-    // Body: { "publicada": true }
     // -------------------------
     @PatchMapping("/{id}/publicada")
     public ResponseEntity<?> atualizarStatusPublicacao(
@@ -67,7 +91,6 @@ public class HistoriaController {
 
     // -------------------------
     // PATCH /api/historias/{id}/km
-    // Body: { "km": 12.5 }
     // -------------------------
     @PatchMapping("/{id}/km")
     public ResponseEntity<?> atualizarKm(
@@ -98,4 +121,10 @@ public class HistoriaController {
     // -------------------------
     public record PublicadaRequest(Boolean publicada) {}
     public record KmRequest(BigDecimal km) {}
+
+    @GetMapping("/jogador/{jogadorId}")
+    public ResponseEntity<List<Historia>> listarHistoriasPorJogador(@PathVariable Long jogadorId) {
+        List<Historia> jornadas = historiaService.listarHistoriasPorJogador(jogadorId);
+        return ResponseEntity.ok(jornadas);
+    }
 }
