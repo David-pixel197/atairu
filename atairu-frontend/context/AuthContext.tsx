@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 1. Tipagem exata dos dados temporários
 export interface TempUserData {
   email?: string;
   senha?: string;
@@ -10,6 +9,7 @@ export interface TempUserData {
   nickname?: string;
   nomeCompleto?: string;
   jogadorId?: number;
+  historiaId?: number;
 }
 
 interface AuthContextData {

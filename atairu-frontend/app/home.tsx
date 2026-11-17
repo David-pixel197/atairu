@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
   TouchableOpacity,
+  ScrollView,
   SafeAreaView,
   Platform,
   Alert,
@@ -16,6 +17,7 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '@/context/AuthContext';
+import BASE_URL from '@/config/api';
 
 const cleanMapStyle = [
   {
@@ -48,9 +50,16 @@ interface ItemPista {
   raio: number;
 }
 
+interface InventarioItem {
+  item: { idItem: number } | null;
+}
+
 export default function home() {
   const router = useRouter();
-  const { tempUserData, historiaId } = useAuth();
+  const { tempUserData } = useAuth();
+
+  const historiaId = tempUserData?.historiaId ?? -1;
+  const jogadorId = tempUserData?.jogadorId;
 
   const [region, setRegion] = useState({
     latitude: -23.5505,
@@ -62,6 +71,8 @@ export default function home() {
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pontosDeInteresse, setPontosDeInteresse] = useState<ItemPista[]>([]);
+  const [debugTeleportVisible, setDebugTeleportVisible] = useState(false);
+  const debugLongPressRef = useRef(false);
   
   const [itemColetadoModal, setItemColetadoModal] = useState<ItemPista | null>(null);
 
@@ -75,16 +86,30 @@ export default function home() {
   };
 
   const fetchItensHistoria = async () => {
-    if (historiaId <= 0) {
+    if (historiaId <= 0 || !jogadorId) {
       setPontosDeInteresse([]);
       return;
     }
 
+    setPontosDeInteresse([]);
     try {
-      const response = await fetch(`http://192.168.1.26:8080/api/historias/${historiaId}/itens`);
-      if (!response.ok) throw new Error('Erro ao buscar itens da história');
-      const data = await response.json();
-      setPontosDeInteresse(data);
+      const [responseItens, responseInventario] = await Promise.all([
+        fetch(`${BASE_URL}/api/historias/${historiaId}/itens`),
+        fetch(`${BASE_URL}/api/inventario/${jogadorId}/historia/${historiaId}`),
+      ]);
+      if (!responseItens.ok) throw new Error('Erro ao buscar itens da história');
+      if (!responseInventario.ok) throw new Error('Erro ao verificar o inventário do jogador');
+
+      const [itensHistoria, inventario]: [ItemPista[], InventarioItem[]] = await Promise.all([
+        responseItens.json(),
+        responseInventario.json(),
+      ]);
+      const itensColetados = new Set(
+        inventario.flatMap((registro) => registro.item ? [registro.item.idItem] : [])
+      );
+      setPontosDeInteresse(
+        itensHistoria.filter((ponto) => !itensColetados.has(ponto.idItem))
+      );
     } catch (error) {
       console.log('Erro ao carregar pistas do backend:', error);
     }
@@ -132,7 +157,7 @@ export default function home() {
       let lastKnown = await Location.getLastKnownPositionAsync({});
       if (lastKnown) {
         setRegion({
-          latitude: lastKnown.coords.latitude,
+          latitude: lastKnown.coords.latitude, 
           longitude: lastKnown.coords.longitude,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
@@ -170,6 +195,19 @@ export default function home() {
     return R * c;
   };
 
+  const abrirDebugTeleport = () => {
+    setDebugTeleportVisible(true);
+  };
+
+  const teleportarParaPista = (ponto: ItemPista) => {
+    setRegion((atual) => ({
+      ...atual,
+      latitude: ponto.latitude,
+      longitude: ponto.longitude,
+    }));
+    setDebugTeleportVisible(false);
+  };
+
   const handlePressionarPista = async (ponto: ItemPista) => {
     const distancia = calcularDistanciaEmMetros(
       region.latitude,
@@ -180,7 +218,7 @@ export default function home() {
 
     const raioPermitido = ponto.raio || 30;
 
-    if (distancia > raioPermitido) { //ocorre uma validacao dupla(back end confere tbm), nao confiar apenas no front
+    if (distancia > raioPermitido) {
       Alert.alert(
         "Muito longe!",
         `Você está a ${Math.round(distancia)} metros deste item. Chegue mais perto (dentro de ${raioPermitido}m) para coletá-lo.`
@@ -191,7 +229,7 @@ export default function home() {
     try {
       const idUsuario = tempUserData?.jogadorId || 1;
       
-      const response = await fetch('http://192.168.1.26:8080/api/inventario/coletar', {
+      const response = await fetch(`${BASE_URL}/api/inventario/coletar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +248,6 @@ export default function home() {
         throw new Error(respostaTexto || 'Erro ao coletar item');
       }
 
-      // Sucesso!
       setItemColetadoModal(ponto);
       setPontosDeInteresse(prev => prev.filter(p => p.idItem !== ponto.idItem));
 
@@ -226,7 +263,7 @@ export default function home() {
     try {
       const idUsuario = tempUserData?.jogadorId || 1;
       
-      const response = await fetch(`http://192.168.1.26:8080/api/inventario/verificar-iniciais?jogadorId=${idUsuario}&historiaId=${historiaId}`, {
+      const response = await fetch(`${BASE_URL}/api/inventario/verificar-iniciais?jogadorId=${idUsuario}&historiaId=${historiaId}`, {
         method: 'POST',
       });
 
@@ -248,7 +285,7 @@ export default function home() {
     fetchCurrentLocation();
     fetchItensHistoria();
     verificarItensIniciaisAutomaticos();
-  }, [historiaId]);
+  }, [tempUserData?.historiaId, tempUserData?.jogadorId]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -360,6 +397,49 @@ export default function home() {
         </TouchableOpacity>
       </Modal>
 
+      <Modal
+        visible={debugTeleportVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDebugTeleportVisible(false)}
+      >
+        <View style={styles.debugOverlay}>
+          <View style={styles.debugDialog}>
+            <Text style={styles.debugTitle}>Teleporte de debug</Text>
+            <Text style={styles.debugDescription}>Selecione uma pista para teleportar até ela.</Text>
+
+            {pontosDeInteresse.length > 0 ? (
+              <ScrollView style={styles.debugPointList}>
+                {pontosDeInteresse.map((ponto) => (
+                  <TouchableOpacity
+                    key={ponto.idItem}
+                    style={styles.debugPointButton}
+                    onPress={() => teleportarParaPista(ponto)}
+                  >
+                    <View style={styles.debugPointTextContainer}>
+                      <Text style={styles.debugPointName}>{ponto.nome}</Text>
+                      <Text style={styles.debugPointDescription} numberOfLines={2}>
+                        {ponto.descricao}
+                      </Text>
+                    </View>
+                    <Ionicons name="navigate" size={20} color="#0E6280" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.debugEmptyText}>Não há pistas disponíveis para esta história.</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.debugCancelButton}
+              onPress={() => setDebugTeleportVisible(false)}
+            >
+              <Text style={styles.debugCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {loadingLocation && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
@@ -377,7 +457,21 @@ export default function home() {
         <TouchableOpacity
           style={styles.compassButton}
           activeOpacity={0.8}
-          onPress={fetchCurrentLocation}
+          delayLongPress={5000}
+          onPressIn={() => {
+            debugLongPressRef.current = false;
+          }}
+          onLongPress={() => {
+            debugLongPressRef.current = true;
+            abrirDebugTeleport();
+          }}
+          onPress={() => {
+            if (debugLongPressRef.current) {
+              debugLongPressRef.current = false;
+              return;
+            }
+            fetchCurrentLocation();
+          }}
         >
           <Ionicons name="compass" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -386,6 +480,19 @@ export default function home() {
       <View style={styles.bottomRightContainer}>
         {menuOpen && (
           <View style={styles.menuOptionsWrapper}>
+            {historiaId > 0 && (
+              <TouchableOpacity
+                style={[styles.menuItem, styles.menuItemHighlight]}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push('/resolver_caso');
+                }}
+              >
+                <Text style={[styles.menuText, styles.menuTextHighlight]}>Resolver Caso</Text>
+                <Ionicons name="finger-print" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -517,10 +624,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  menuItemHighlight: {
+    backgroundColor: '#0E6280',
+  },
   menuText: {
     color: '#000000',
     fontSize: 15,
     fontWeight: '600',
+  },
+  menuTextHighlight: {
+    color: '#FFFFFF',
   },
   menuButton: {
     width: 56,
@@ -582,5 +695,67 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  debugOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  debugDialog: {
+    maxHeight: '75%',
+    padding: 20,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+  },
+  debugTitle: {
+    color: '#1A1A1A',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  debugDescription: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginTop: 6,
+    marginBottom: 14,
+  },
+  debugPointList: {
+    flexGrow: 0,
+  },
+  debugPointButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  debugPointTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  debugPointName: {
+    color: '#1A1A1A',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  debugPointDescription: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginTop: 3,
+  },
+  debugEmptyText: {
+    color: '#6B7280',
+    paddingVertical: 16,
+  },
+  debugCancelButton: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  debugCancelText: {
+    color: '#0E6280',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

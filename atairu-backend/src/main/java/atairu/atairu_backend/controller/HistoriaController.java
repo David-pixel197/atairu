@@ -1,14 +1,22 @@
 package atairu.atairu_backend.controller;
 
 import atairu.atairu_backend.dto.ItemResponseDTO;
+import atairu.atairu_backend.dto.ProgressoHistoriaDTO;
+import atairu.atairu_backend.model.Enigma;
 import atairu.atairu_backend.model.Historia;
+import atairu.atairu_backend.model.JogadorEnigma;
+import atairu.atairu_backend.model.JogadorEnigmaId;
 import atairu.atairu_backend.model.Item;
+import atairu.atairu_backend.model.ProgressoJogador;
+import atairu.atairu_backend.repository.EnigmaRepository;
 import atairu.atairu_backend.repository.ItemRepository;
+import atairu.atairu_backend.repository.JogadorEnigmaRepository;
 import atairu.atairu_backend.service.HistoriaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import atairu.atairu_backend.service.HistoriaService;
+import atairu.atairu_backend.repository.ProgressoJogadorRepository;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -27,6 +35,15 @@ public class HistoriaController {
 
     @Autowired
     private HistoriaService historiaService;
+
+    @Autowired
+    private ProgressoJogadorRepository progressoJogadorRepository;
+
+    @Autowired
+    private EnigmaRepository enigmaRepository;
+
+    @Autowired
+    private JogadorEnigmaRepository jogadorEnigmaRepository;
 
     // -------------------------
     // POST /api/historias
@@ -126,5 +143,49 @@ public class HistoriaController {
     public ResponseEntity<List<Historia>> listarHistoriasPorJogador(@PathVariable Long jogadorId) {
         List<Historia> jornadas = historiaService.listarHistoriasPorJogador(jogadorId);
         return ResponseEntity.ok(jornadas);
+    }
+
+    @PostMapping("/{historiaId}/jogador/{jogadorId}")
+    public ResponseEntity<Void> vincularHistoriaAoJogador(
+            @PathVariable Long historiaId,
+            @PathVariable Long jogadorId) {
+        
+        historiaService.registrarHistoriaParaJogador(jogadorId, historiaId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{historiaId}/jogador/{jogadorId}")
+    public ResponseEntity<Void> removerJornada(
+            @PathVariable Long historiaId,
+            @PathVariable Long jogadorId) {
+        
+        historiaService.apagarJornadaEItens(jogadorId, historiaId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/progresso/jogador/{jogadorId}")
+    public ResponseEntity<List<ProgressoHistoriaDTO>> buscarProgressoPorJogador(@PathVariable Long jogadorId) {
+        List<ProgressoHistoriaDTO> progressoList = progressoJogadorRepository.findByFkJogador(jogadorId)
+                .stream()
+                .map(progresso -> {
+                    List<Enigma> enigmas = enigmaRepository.findByHistoria_Id(progresso.getIdHistoria());
+                    boolean resolvido = !enigmas.isEmpty() && enigmas.stream().allMatch(enigma ->
+                            jogadorEnigmaRepository.findById(
+                                            new JogadorEnigmaId(jogadorId, enigma.getIdEnigma()))
+                                    .map(estado -> Boolean.TRUE.equals(estado.getDesvendado()))
+                                    .orElse(false)
+                    );
+
+                    return new ProgressoHistoriaDTO(
+                            progresso.getIdHistoria(),
+                            progresso.getFkJogador(),
+                            progresso.getItensColetados(),
+                            progresso.getTotalItens(),
+                            progresso.getPercentual(),
+                            resolvido
+                    );
+                })
+                .toList();
+        return ResponseEntity.ok(progressoList);
     }
 }

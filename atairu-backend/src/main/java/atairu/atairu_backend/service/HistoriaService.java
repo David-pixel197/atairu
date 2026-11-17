@@ -1,9 +1,14 @@
 package atairu.atairu_backend.service;
 
+import atairu.atairu_backend.model.Enigma;
 import atairu.atairu_backend.model.Historia;
+import atairu.atairu_backend.model.JogadorEnigmaId;
+import atairu.atairu_backend.repository.EnigmaRepository;
 import atairu.atairu_backend.repository.HistoriaRepository;
+import atairu.atairu_backend.repository.JogadorEnigmaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,6 +18,12 @@ public class HistoriaService {
 
     @Autowired
     private HistoriaRepository repository;
+
+    @Autowired
+    private EnigmaRepository enigmaRepository;
+
+    @Autowired
+    private JogadorEnigmaRepository jogadorEnigmaRepository;
 
     // -------------------------
     // CREATE
@@ -78,5 +89,24 @@ public class HistoriaService {
 
     public List<Historia> listarHistoriasPorJogador(Long jogadorId) {
         return repository.findHistoriasByJogadorId(jogadorId);
+    }
+
+    public void registrarHistoriaParaJogador(Long jogadorId, Long historiaId) {
+        if (jogadorId == null || historiaId == null) {
+            throw new IllegalArgumentException("ID do jogador e da história são obrigatórios.");
+        }
+        repository.salvarJogadorHistoria(jogadorId, historiaId);
+    }
+
+    @Transactional
+    public void apagarJornadaEItens(Long jogadorId, Long historiaId) {
+        if (jogadorId == null || historiaId == null) {
+            throw new IllegalArgumentException("ID do jogador e da história são obrigatórios.");
+        }
+        repository.deletarItensDoJogadorNaHistoria(jogadorId, historiaId);
+        enigmaRepository.findByHistoria_Id(historiaId).stream()
+                .map(enigma -> new JogadorEnigmaId(jogadorId, enigma.getIdEnigma()))
+                .forEach(jogadorEnigmaRepository::deleteById);
+        repository.deletarJogadorHistoria(jogadorId, historiaId);
     }
 }

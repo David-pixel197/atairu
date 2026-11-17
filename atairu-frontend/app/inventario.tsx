@@ -12,10 +12,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import BASE_URL from '@/config/api';
 
 export default function InventarioScreen() {
   const router = useRouter();
-  const { tempUserData, historiaId } = useAuth();
+  const { tempUserData } = useAuth();
+
+  const jogadorId = tempUserData?.jogadorId ?? -1;
+  const historiaId = tempUserData?.historiaId ?? -1;
 
   const imagensItens: { [key: string]: any } = {
     'livro.png': require('../assets/images/itens/livro.png'),
@@ -38,9 +42,10 @@ export default function InventarioScreen() {
   const [itemSelecionado, setItemSelecionado] = useState<any>(null);
 
   const fetchDadosJogador = async () => {
+    if (jogadorId <= 0) return;
+
     try {
-      const idUsuario = tempUserData?.jogadorId || -1;
-      const response = await fetch(`http://192.168.1.26:8080/api/jogadores/${idUsuario}`);
+      const response = await fetch(`${BASE_URL}/api/jogadores/${jogadorId}`);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar dados do jogador');
@@ -60,12 +65,13 @@ export default function InventarioScreen() {
   };
 
   const fetchInventario = async () => {
-    if (historiaId <= 0) return;
+    if (historiaId <= 0 || jogadorId <= 0) {
+      setItensInventario([]);
+      return;
+    }
 
     try {
-      const idUsuario = tempUserData?.jogadorId || 1;
-      
-      const response = await fetch(`http://192.168.1.26:8080/api/inventario/${idUsuario}/historia/${historiaId}`);
+      const response = await fetch(`${BASE_URL}/api/inventario/${jogadorId}/historia/${historiaId}`);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar inventário');
@@ -92,7 +98,7 @@ export default function InventarioScreen() {
   useEffect(() => {
     fetchDadosJogador();
     fetchInventario();
-  }, [historiaId]);
+  }, [jogadorId, historiaId]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -121,7 +127,7 @@ export default function InventarioScreen() {
             <Text style={styles.profileDetail}>Entrou em: {jogador.dataCadastro}</Text>
 
             <View style={styles.levelContainer}>
-              <Text style={styles.levelText}>10 Nível</Text>
+              <Text style={styles.levelText}>0 Nível</Text>
               <View style={styles.progressBarBackground}>
                 <View style={styles.progressBarFill} />
               </View>
@@ -164,7 +170,6 @@ export default function InventarioScreen() {
         <View style={styles.inspectOverlay}>
           {itemSelecionado && (
             <View style={styles.inspectContainer}>
-              {/* Botão de fechar */}
               <TouchableOpacity
                 style={styles.inspectCloseButton}
                 onPress={() => setItemSelecionado(null)}
@@ -203,10 +208,11 @@ export default function InventarioScreen() {
       </Modal>
 
       <View style={styles.footerContainer}>
-        <TouchableOpacity style={styles.closeButton} activeOpacity={0.8}
-        onPress={() => {
-              router.push('/home');
-            }}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          activeOpacity={0.8}
+          onPress={() => router.push('/home')}
+        >
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
       </View>
@@ -291,7 +297,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressBarFill: {
-    width: '60%',
+    width: '0%',
     height: '100%',
     backgroundColor: '#0E6280',
     borderRadius: 4,

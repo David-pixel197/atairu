@@ -122,34 +122,9 @@ ipconfig | findstr "IPv4"
 
 ### Configurando a URL base no frontend
 
-Crie (ou edite) um arquivo de configuração central no frontend para definir a URL do backend, evitando repetição em cada chamada de API. Por exemplo, em `atairu-frontend/src/config/api.ts`:
+Copie `atairu-frontend/.env.example` para `atairu-frontend/.env` e ajuste `EXPO_PUBLIC_BASE_URL` para o endereço do backend. Use `http://localhost:8080` no navegador, `http://10.0.2.2:8080` no emulador Android ou o IP local do computador no celular físico. Reinicie o Expo após alterar a variável.
 
-```typescript
-// Escolha o endereço correto para o seu ambiente de desenvolvimento:
-
-// Para navegador web ou Simulador iOS:
-const BASE_URL = 'http://localhost:8080';
-
-// Para Emulador Android:
-// const BASE_URL = 'http://10.0.2.2:8080';
-
-// Para celular físico via Expo Go (substitua pelo seu IP):
-// const BASE_URL = 'http://192.168.1.10:8080';
-
-export default BASE_URL;
-```
-
-Importe e use essa constante em qualquer chamada de API:
-
-```typescript
-import BASE_URL from '../config/api';
-
-const response = await fetch(`${BASE_URL}/api/jogadores/cadastro`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, senha, nickname, nome, cpf }),
-});
-```
+O arquivo `atairu-frontend/config/api.ts` centraliza a leitura dessa variável e é usado pelas chamadas de API. Se ela não estiver definida, o app mantém o endereço local já configurado no projeto.
 
 ---
 

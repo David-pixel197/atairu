@@ -22,6 +22,7 @@ export default function RootLayout() {
         <Stack.Screen name="historias" options={{ animation: 'slide_from_bottom' }}/>
         <Stack.Screen name="inventario" options={{ animation: 'slide_from_bottom' }}/>
         <Stack.Screen name="configuracoes" options={{ animation: 'slide_from_bottom' }}/>
+        <Stack.Screen name="resolver_caso" options={{ animation: 'slide_from_bottom' }}/>
       </Stack>
     </AuthProvider>
   );

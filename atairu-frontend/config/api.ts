@@ -1,15 +1,4 @@
-// ============================================================
-// CONFIGURAÇÃO DA URL BASE DO BACKEND
-// ============================================================
-// Escolha o endereço correto para o seu ambiente:
-
-// Navegador web ou Simulador iOS:
-const BASE_URL = 'http://192.168.1.26:8080';
-
-// Emulador Android (descomente se necessário):
-// const BASE_URL = 'http://10.0.2.2:8080';
-
-// Celular físico via Expo Go (substitua pelo seu IP local):
-// const BASE_URL = 'http://192.168.X.X:8080';
+const configuredBaseUrl = process.env.EXPO_PUBLIC_BASE_URL?.trim();
+const BASE_URL = (configuredBaseUrl || 'http://192.168.1.26:8080').replace(/\/+$/, '');
 
 export default BASE_URL;

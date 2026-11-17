@@ -264,18 +264,35 @@ CREATE INDEX idx_itens_localizacao ON itens USING GIST (localizacao);
 -- que poderia ficar inconsistente com o inventário).
 -- ---------------------------------------------------------
 
-CREATE VIEW progresso_jogador AS
-SELECT
+CREATE OR REPLACE VIEW progresso_jogador AS
+SELECT 
     jh.fk_jogador,
     jh.fk_historias,
-    COUNT(inv.fk_itens) AS itens_coletados,
-    COUNT(i.id_item)    AS total_itens,
-    ROUND(100.0 * COUNT(inv.fk_itens) / NULLIF(COUNT(i.id_item), 0), 1)
-                        AS percentual
-FROM jogador_historias jh
-LEFT JOIN itens i
-       ON i.fk_historia = jh.fk_historias
-LEFT JOIN inventario inv
-       ON inv.fk_itens = i.id_item
-      AND inv.fk_usuario = jh.fk_jogador
-GROUP BY jh.fk_jogador, jh.fk_historias;
+    (
+        SELECT COUNT(inv.id) 
+        FROM inventario inv 
+        JOIN itens i ON i.id_item = inv.fk_itens 
+        WHERE inv.fk_usuario = jh.fk_jogador 
+          AND i.fk_historia = jh.fk_historias
+    ) AS itens_coletados,
+    (
+        SELECT COUNT(i.id_item) 
+        FROM itens i 
+        WHERE i.fk_historia = jh.fk_historias
+    ) AS total_itens,
+    ROUND(
+        COALESCE(
+            (
+                SELECT COUNT(inv.id) * 100.0 
+                FROM inventario inv 
+                JOIN itens i ON i.id_item = inv.fk_itens 
+                WHERE inv.fk_usuario = jh.fk_jogador 
+                  AND i.fk_historia = jh.fk_historias
+            ) / NULLIF((
+                SELECT COUNT(i.id_item) 
+                FROM itens i 
+                WHERE i.fk_historia = jh.fk_historias
+            ), 0), 
+        0)
+    , 2) AS percentual
+FROM jogador_historias jh;

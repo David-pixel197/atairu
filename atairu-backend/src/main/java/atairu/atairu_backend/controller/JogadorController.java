@@ -104,7 +104,6 @@ public class JogadorController {
 
     // -------------------------
     // PATCH /api/jogadores/{id}/avatar
-    // Body: { "url": "https://..." }
     // -------------------------
     @PatchMapping("/{id}/avatar")
     public ResponseEntity<?> alterarAvatar(
@@ -119,7 +118,6 @@ public class JogadorController {
 
     // -------------------------
     // PATCH /api/jogadores/{id}/km
-    // Body: { "km": 12.5 }
     // -------------------------
     @PatchMapping("/{id}/km")
     public ResponseEntity<?> atualizarKm(

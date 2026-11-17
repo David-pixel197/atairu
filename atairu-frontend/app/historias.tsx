@@ -9,10 +9,14 @@ import {
   SafeAreaView,
   ImageBackground,
   ActivityIndicator,
+  Modal,
+  Share,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import BASE_URL from '@/config/api';
 
 const imagesMap: { [key: string]: any } = {
   'sonhador.png': require('../assets/images/catalogo/sonhador.png'),
@@ -21,31 +25,44 @@ const imagesMap: { [key: string]: any } = {
 
 export default function HistoriasScreen() {
   const router = useRouter();
-  const { historiaId: idHistoriaAtiva, updateHistoriaId } = useAuth();
+  const { tempUserData, updateTempUserData } = useAuth();
+  
   const [activeTab, setActiveTab] = useState<'catalogo' | 'jornadas'>('jornadas');
   const [searchText, setSearchText] = useState('');
   
   const [catalogoHistorias, setCatalogoHistorias] = useState<any[]>([]);
   const [jornadasHistorias, setJornadasHistorias] = useState<any[]>([]);
+  const [progressoJornadas, setProgressoJornadas] = useState<any[]>([]);
+  
+  const [historiaModal, setHistoriaModal] = useState<any | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
 
-  const jogadorId = 1; 
+  const jogadorId = tempUserData?.jogadorId;
+  const historiaIdAtiva = tempUserData?.historiaId ?? -1;
 
   async function carregarDados() {
     try {
       setLoading(true);
 
-      const responseCatalogo = await fetch('http://192.168.1.26:8080/api/historias');
+      const responseCatalogo = await fetch(`${BASE_URL}/api/historias`);
       if (!responseCatalogo.ok) throw new Error('Erro ao carregar o catálogo.');
       const dataCatalogo = await responseCatalogo.json();
       setCatalogoHistorias(dataCatalogo);
 
-      const responseJornadas = await fetch(`http://192.168.1.26:8080/api/historias/jogador/${jogadorId}`);
-      if (!responseJornadas.ok) throw new Error('Erro ao carregar as jornadas.');
-      const dataJornadas = await responseJornadas.json();
-      setJornadasHistorias(dataJornadas);
+      if (jogadorId) {
+        const responseJornadas = await fetch(`${BASE_URL}/api/historias/jogador/${jogadorId}`);
+        if (!responseJornadas.ok) throw new Error('Erro ao carregar as jornadas.');
+        const dataJornadas = await responseJornadas.json();
+        setJornadasHistorias(dataJornadas);
+
+        const responseProgresso = await fetch(`${BASE_URL}/api/historias/progresso/jogador/${jogadorId}`);
+        if (responseProgresso.ok) {
+          const dataProgresso = await responseProgresso.json();
+          setProgressoJornadas(dataProgresso);
+        }
+      }
 
       setLoading(false);
     } catch (err) {
@@ -57,16 +74,83 @@ export default function HistoriasScreen() {
 
   useEffect(() => {
     carregarDados();
-  }, []);
+  }, [jogadorId]);
 
-  const selecionarHistoriaAtiva = (historiaIdSelecionada: number) => {
-    if (idHistoriaAtiva === historiaIdSelecionada) {
-      void updateHistoriaId(-1);
-      return;
+  const selecionarHistoriaAtiva = async (novaHistoriaId: number) => {
+    try {
+      if (jogadorId) {
+        await fetch(`${BASE_URL}/api/historias/${novaHistoriaId}/jogador/${jogadorId}`, {
+          method: 'POST',
+        });
+      }
+
+      updateTempUserData({ historiaId: novaHistoriaId });
+      setHistoriaModal(null);
+
+      router.push('/home');
+    } catch (error) {
+      console.error('Erro ao iniciar jornada:', error);
     }
+  };
 
-    void updateHistoriaId(historiaIdSelecionada);
-    router.push('/home');
+  const alternarJornadaLocal = (idClicado: number) => {
+    const novoId = historiaIdAtiva === idClicado ? -1 : idClicado;
+    updateTempUserData({ historiaId: novoId });
+  };
+
+  const confirmarExclusaoJornada = (item: any) => {
+    const itemId = item.idHistoria || item.id;
+
+    Alert.alert(
+      'Apagar Jornada',
+      `Tem certeza que deseja apagar "${item.titulo}"? Todo o seu progresso e os itens coletados nesta história serão excluídos permanentemente.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Apagar',
+          style: 'destructive',
+          onPress: () => executarExclusaoJornada(itemId),
+        },
+      ]
+    );
+  };
+
+  const executarExclusaoJornada = async (itemId: number) => {
+    if (!jogadorId) return;
+
+    try {
+      const response = await fetch(
+        `${BASE_URL}/api/historias/${itemId}/jogador/${jogadorId}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) throw new Error('Falha ao apagar jornada no servidor.');
+
+      setJornadasHistorias((prev) =>
+        prev.filter((h) => (h.idHistoria || h.id) !== itemId)
+      );
+
+      setProgressoJornadas((prev) =>
+        prev.filter((p) => p.idHistoria !== itemId)
+      );
+
+      if (historiaIdAtiva === itemId) {
+        updateTempUserData({ historiaId: -1 });
+      }
+    } catch (error) {
+      console.error('Erro ao apagar jornada:', error);
+      Alert.alert('Erro', 'Não foi possível apagar a jornada. Tente novamente.');
+    }
+  };
+
+  const compartilharHistoria = async (historia: any) => {
+    try {
+      await Share.share({
+        message: `Confira a história "${historia.titulo}" por ${historia.autor}!`,
+      });
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const listaAtual = activeTab === 'catalogo' ? catalogoHistorias : jornadasHistorias;
@@ -136,7 +220,7 @@ export default function HistoriasScreen() {
                   key={itemId} 
                   style={styles.coverCard} 
                   activeOpacity={0.8}
-                  onPress={() => selecionarHistoriaAtiva(itemId)}
+                  onPress={() => setHistoriaModal(item)}
                 >
                   <ImageBackground
                     source={imageSource}
@@ -154,17 +238,21 @@ export default function HistoriasScreen() {
             ) : (
               historiasFiltradas.map((item) => {
                 const itemId = item.idHistoria || item.id;
-                const progresso = item.progresso ?? (item.publicada ? 100 : 0);
-                const isCompleto = progresso === 100;
                 
-                const isJogando = idHistoriaAtiva === itemId;
+                const progressoItem = progressoJornadas.find((p) => p.idHistoria === itemId);
+                const percentual = Math.round(progressoItem?.percentual ?? 0);
+                
+                const isCompleto = progressoItem?.resolvido === true;
+                const isJogando = historiaIdAtiva === itemId;
 
                 return (
                   <TouchableOpacity 
                     key={itemId} 
                     style={styles.journeyCard}
                     activeOpacity={0.9}
-                    onPress={() => selecionarHistoriaAtiva(itemId)}
+                    onPress={() => alternarJornadaLocal(itemId)}
+                    onLongPress={() => confirmarExclusaoJornada(item)}
+                    delayLongPress={500}
                   >
                     <View style={styles.journeyHeader}>
                       <View style={{ flex: 1 }}>
@@ -185,9 +273,9 @@ export default function HistoriasScreen() {
 
                     <View style={styles.progressContainer}>
                       <View style={styles.progressBarBackground}>
-                        <View style={[styles.progressBarFill, { width: `${progresso}%` }]} />
+                        <View style={[styles.progressBarFill, { width: `${percentual}%` }]} />
                       </View>
-                      <Text style={styles.progressText}>{progresso}%</Text>
+                      <Text style={styles.progressText}>{percentual}%</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -197,11 +285,82 @@ export default function HistoriasScreen() {
         )}
       </ScrollView>
 
+      <Modal
+        visible={historiaModal !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setHistoriaModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          {historiaModal && (() => {
+            const idadeMinima = historiaModal.classificacoes?.[0]?.idadeMinima ?? 0;
+            const isLivre = idadeMinima === 0;
+
+            return (
+              <View style={styles.modalCard}>
+                <View style={styles.modalTopRow}>
+                  <View style={styles.modalMetaRow}>
+                    <View
+                      style={[
+                        styles.ageBadge,
+                        { backgroundColor: isLivre ? '#0C9447' : '#F5B800' },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.ageBadgeText,
+                          { color: isLivre ? '#FFFFFF' : '#000000' },
+                        ]}
+                      >
+                        {isLivre ? 'L' : `A${idadeMinima}`}
+                      </Text>
+                    </View>
+                    <Text style={styles.modalMetaText}>2026</Text>
+                    <Text style={styles.modalMetaText}>
+                      {historiaModal.km != null ? `${historiaModal.km} Km` : ''}
+                    </Text>
+                    <TouchableOpacity onPress={() => compartilharHistoria(historiaModal)}>
+                      <Ionicons name="share-social-outline" size={20} color="#1A1A1A" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => setHistoriaModal(null)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={32} color="#1A1A1A" />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalTitle}>{historiaModal.titulo}</Text>
+
+                <ScrollView style={styles.modalSinopseScroll} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.modalSinopse}>
+                    {historiaModal.texto || 'Sem descrição disponível.'}
+                  </Text>
+                </ScrollView>
+
+                <Text style={styles.modalAuthor}>{historiaModal.autor}</Text>
+
+                <TouchableOpacity
+                  style={styles.playButton}
+                  activeOpacity={0.85}
+                  onPress={() => selecionarHistoriaAtiva(historiaModal.id)}
+                >
+                  <Ionicons name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.playButtonText}>Jogar</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
+        </View>
+      </Modal>
+
       <View style={styles.footerContainer}>
         <TouchableOpacity
           style={styles.closeButton}
           activeOpacity={0.8}
-            onPress={() => router.push('/home')}
+          onPress={() => router.push('/home')}
         >
           <Ionicons name="close" size={26} color="#000000" />
         </TouchableOpacity>
@@ -278,8 +437,7 @@ const styles = StyleSheet.create({
   coversGrid: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    gap: 12 
-  },
+    gap: 12 },
   coverCard: { 
     width: '30%', 
     aspectRatio: 0.68, 
@@ -397,5 +555,89 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
     elevation: 5 
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 22,
+  },
+  modalCard: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  ageBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  ageBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  modalMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 10,
+  },
+  modalSinopseScroll: {
+    maxHeight: 260,
+    marginBottom: 12,
+  },
+  modalSinopse: {
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: '#333333',
+    textAlign: 'left',
+  },
+  modalAuthor: {
+    fontSize: 12.5,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    textAlign: 'right',
+    marginBottom: 18,
+  },
+  playButton: {
+    flexDirection: 'row',
+    backgroundColor: '#0E6280',
+    paddingVertical: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
